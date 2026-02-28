@@ -1,0 +1,42 @@
+app/(dashboard)/my-courses/page.tsx(31,57): error TS2352: Conversion of type '{ id: string; }' to type 'Course' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: string; }' is missing the following properties from type 'Course': courseId, title, slug, description, and 11 more.
+app/(dashboard)/my-courses/page.tsx(64,30): error TS2339: Property 'id' does not exist on type 'Course'.
+app/(dashboard)/my-courses/page.tsx(66,25): error TS2551: Property 'thumbnailUrl' does not exist on type 'Course'. Did you mean 'thumbnailURL'?
+app/(dashboard)/my-courses/page.tsx(67,36): error TS2551: Property 'thumbnailUrl' does not exist on type 'Course'. Did you mean 'thumbnailURL'?
+app/(dashboard)/my-courses/page.tsx(75,88): error TS2339: Property 'level' does not exist on type 'Course'.
+app/(dashboard)/my-courses/page.tsx(77,57): error TS2339: Property 'id' does not exist on type 'Course'.
+app/(public)/academy/[slug]/page.tsx(3,24): error TS2307: Cannot find module '@/components/layout/Header' or its corresponding type declarations.
+app/(public)/academy/[slug]/page.tsx(14,51): error TS2339: Property 'id' does not exist on type 'Course'.
+app/(public)/academy/[slug]/page.tsx(25,41): error TS2339: Property 'level' does not exist on type 'Course'.
+app/(public)/academy/[slug]/page.tsx(38,37): error TS2551: Property 'thumbnailUrl' does not exist on type 'Course'. Did you mean 'thumbnailURL'?
+app/(public)/academy/[slug]/page.tsx(39,50): error TS2551: Property 'thumbnailUrl' does not exist on type 'Course'. Did you mean 'thumbnailURL'?
+app/(public)/academy/page.tsx(3,24): error TS2307: Cannot find module '@/components/layout/Header' or its corresponding type declarations.
+app/(public)/academy/page.tsx(23,64): error TS2339: Property 'id' does not exist on type 'Course'.
+app/(public)/academy/page.tsx(26,27): error TS2551: Property 'thumbnailUrl' does not exist on type 'Course'. Did you mean 'thumbnailURL'?
+app/(public)/academy/page.tsx(27,38): error TS2551: Property 'thumbnailUrl' does not exist on type 'Course'. Did you mean 'thumbnailURL'?
+app/(public)/academy/page.tsx(35,31): error TS2339: Property 'level' does not exist on type 'Course'.
+app/(public)/login/page.tsx(8,24): error TS2307: Cannot find module '@/components/layout/Header' or its corresponding type declarations.
+app/(public)/register/page.tsx(9,24): error TS2307: Cannot find module '@/components/layout/Header' or its corresponding type declarations.
+app/(public)/shop/[slug]/page.tsx(3,24): error TS2307: Cannot find module '@/components/layout/Header' or its corresponding type declarations.
+app/(public)/shop/page.tsx(3,24): error TS2307: Cannot find module '@/components/layout/Header' or its corresponding type declarations.
+app/(public)/shop/page.tsx(23,63): error TS2339: Property 'id' does not exist on type 'Product'.
+app/api/create-checkout-session/route.ts(3,10): error TS2305: Module '"@/firebase/firebaseAdmin"' has no exported member 'db'.
+app/api/create-checkout-session/route.ts(155,18): error TS2304: Cannot find name 'admin'.
+app/api/create-checkout-session/route.ts(156,18): error TS2304: Cannot find name 'admin'.
+app/api/webhook/stripe/route.ts(3,10): error TS2305: Module '"@/firebase/firebaseAdmin"' has no exported member 'db'.
+app/api/webhook/stripe/route.ts(67,33): error TS2304: Cannot find name 'admin'.
+app/api/webhook/stripe/route.ts(73,22): error TS2304: Cannot find name 'admin'.
+services/server/courseService.ts(2,18): error TS2305: Module '"@/types/firestore/course"' has no exported member 'Lesson'.
+services/server/courseService.ts(9,38): error TS2352: Conversion of type '{ id: string; }' to type 'Course' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: string; }' is missing the following properties from type 'Course': courseId, title, slug, description, and 11 more.
+services/server/courseService.ts(19,12): error TS2352: Conversion of type '{ id: string; }' to type 'Course' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: string; }' is missing the following properties from type 'Course': courseId, title, slug, description, and 11 more.
+services/server/orderService.ts(22,15): error TS7034: Variable 'stockReads' implicitly has type 'any[]' in some locations where its type cannot be determined.
+services/server/orderService.ts(43,30): error TS7005: Variable 'stockReads' implicitly has an 'any[]' type.
+services/server/orderService.ts(51,32): error TS7005: Variable 'stockReads' implicitly has an 'any[]' type.
+services/server/orderService.ts(52,44): error TS7005: Variable 'stockReads' implicitly has an 'any[]' type.
+services/server/productService.ts(9,38): error TS2352: Conversion of type '{ id: string; }' to type 'Product' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: string; }' is missing the following properties from type 'Product': productId, name, slug, description, and 9 more.
+services/server/productService.ts(19,12): error TS2352: Conversion of type '{ id: string; }' to type 'Product' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: string; }' is missing the following properties from type 'Product': productId, name, slug, description, and 9 more.
+services/stripeService.ts(8,5): error TS2322: Type '"2023-10-16"' is not assignable to type '"2026-02-25.clover"'.

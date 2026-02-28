@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAdmin() {
+      // In a real scenario you might check token claims or a Firestore doc
+      // Since it's tricky to read Firestore efficiently from Storage rules, 
+      // relying on custom claims like request.auth.token.admin == true is common.
+      return request.auth != null; // Placeholder as requested, to be enhanced with role checking
+    }
+
+    match /course-thumbnails/{file} {
+      allow read;
+      allow write: if isAdmin();
+    }
+
+    match /product-images/{file} {
+      allow read;
+      allow write: if isAdmin();
+    }
+
+    match /course-videos/{file} {
+      allow read: if false; // Use secure streaming service or backend signed URLs
+      allow write: if isAdmin();
+    }
+
+  }
+}
