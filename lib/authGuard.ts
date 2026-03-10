@@ -22,7 +22,7 @@ export async function verifyAuth(request: NextRequest) {
             email: decodedToken.email,
             role: userData?.role || 'user',
         };
-    } catch (error) {
+    } catch {
         throw new Error('Unauthorized: Token verification failed');
     }
 }

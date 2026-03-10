@@ -1,30 +1,39 @@
-export const StorySection = () => {
-    return (
-        <section className="bg-gray-900 text-white py-24 lg:py-32 relative overflow-hidden">
-            {/* Abstract pattern */}
-            <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-[600px] h-[600px] bg-green-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+import Image from 'next/image';
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                <div className="grid lg:grid-cols-2 gap-16 items-center">
-                    <div>
-                        <span className="text-green-400 font-bold tracking-widest uppercase text-sm mb-4 block">Our Heritage</span>
-                        <h2 className="text-4xl lg:text-5xl font-extrabold mb-8 leading-tight">Rooted in Philadelphia. <br />Inspired by Culture.</h2>
-                        <div className="space-y-6 text-gray-300 text-lg leading-relaxed">
-                            <p>Philadelphia isn't just a place; it's an attitude. A rich tapestry of Italian markets, corner delis, and generations of families passing down recipes inscribed with love and resilience.</p>
-                            <p>Our mission is to democratize the real flavor of the City of Brotherly Love. We aren't selling generic fast food. We are delivering the authentic culinary techniques and secret ingredients that make Philly's food culture world-renowned.</p>
-                            <p className="font-semibold text-white pt-4 border-t border-gray-800">Learn to cook it. Buy the authentic tools. Live the culture.</p>
-                        </div>
-                    </div>
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-green-500 rounded-3xl translate-x-4 translate-y-4 opacity-50"></div>
-                        <img
-                            src="https://images.unsplash.com/photo-1595295333158-4742f28fbd85?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80"
-                            alt="Philly Chef cooking"
-                            className="relative z-10 rounded-3xl w-full h-auto object-cover shadow-2xl grayscale hover:grayscale-0 transition duration-700"
-                        />
-                    </div>
-                </div>
-            </div>
-        </section>
-    );
-};
+export default function StorySection() {
+  return (
+    <section className="py-24 px-6 bg-gradient-to-br from-gray-50 to-white dark:from-gray-950 dark:to-black">
+      <div className="max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-16 items-center">
+          {/* Image */}
+          <div className="relative h-[500px] rounded-3xl overflow-hidden shadow-2xl order-2 md:order-1">
+            <Image 
+              src="https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&auto=format&fit=crop" 
+              alt="Philadelphia Kitchen" 
+              fill
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+          </div>
+          
+          {/* Content */}
+          <div className="order-1 md:order-2">
+            <span className="inline-block px-4 py-2 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm font-semibold mb-6">
+              Our Story
+            </span>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
+              Rooted in Philadelphia.<br />Inspired by Culture.
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+              We bring the traditions, flavors, and energy of Philly kitchens into your home.
+              Learn from real chefs. Cook with real ingredients. Experience culture through food.
+            </p>
+            <p className="text-lg text-gray-600 dark:text-gray-300 leading-relaxed">
+              Every recipe tells a story. Every course celebrates heritage. Every product honors authenticity.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

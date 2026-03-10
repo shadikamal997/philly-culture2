@@ -1,5 +1,6 @@
 import { adminDb } from '@/firebase/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { emailService } from '@/services/emailService';
 
 export async function processOrderFulfillment(stripeEventId: string, orderId: string, customerId: string, lineItems: any[]) {
     // 1. Strict Idempotency check lock
@@ -54,9 +55,9 @@ export async function processOrderFulfillment(stripeEventId: string, orderId: st
         });
 
         if (coursesToGrant.length > 0) {
-            const currentCourses = userDoc.data()?.enrolledCourses || [];
+            const currentCourses = userDoc.data()?.purchasedCourses || [];
             const newCourses = Array.from(new Set([...currentCourses, ...coursesToGrant]));
-            transaction.update(userRef, { enrolledCourses: newCourses });
+            transaction.update(userRef, { purchasedCourses: newCourses });
         }
 
         transaction.update(orderRef, {
@@ -64,6 +65,49 @@ export async function processOrderFulfillment(stripeEventId: string, orderId: st
             updatedAt: FieldValue.serverTimestamp()
         });
     });
+
+    // 4. Send order confirmation email
+    try {
+        const orderDoc = await orderRef.get();
+        const orderData = orderDoc.data();
+        const userDoc = await userRef.get();
+        const userData = userDoc.data();
+
+        if (orderData && userData) {
+            await emailService.sendOrderConfirmation({
+                recipientEmail: userData.email || orderData.userEmail,
+                recipientName: userData.displayName || 'Valued Customer',
+                orderId: orderData.orderId,
+                orderDate: orderData.createdAt?.toDate() || new Date(),
+                items: orderData.items.map((item: any) => ({
+                    name: item.title,
+                    quantity: item.quantity,
+                    price: item.price,
+                })),
+                subtotal: orderData.subtotal,
+                tax: orderData.taxAmount || 0,
+                shipping: orderData.shippingCost || 0,
+                total: orderData.total,
+                shippingAddress: orderData.shippingAddress ? {
+                    fullName: userData.displayName || 'Customer',
+                    address: orderData.shippingAddress.street,
+                    city: orderData.shippingAddress.city,
+                    state: orderData.shippingAddress.state,
+                    zipCode: orderData.shippingAddress.postalCode,
+                } : {
+                    fullName: userData.displayName || 'Customer',
+                    address: 'Digital Product - No Shipping',
+                    city: '-',
+                    state: '-',
+                    zipCode: '-',
+                },
+            });
+            console.log(`✅ Order confirmation email sent to ${userData.email} for order ${orderId}`);
+        }
+    } catch (emailError) {
+        console.error('❌ Failed to send order confirmation email:', emailError);
+        // Don't fail the entire fulfillment for email errors
+    }
 
     return { success: true };
 }

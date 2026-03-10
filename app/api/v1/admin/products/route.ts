@@ -1,37 +1,84 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/firebase/firebaseAdmin';
-import { verifyAdmin } from '@/lib/adminGuard';
+import { productSchema } from '@/lib/validation';
+import { requireAdmin } from '@/lib/roleGuard';
 
-export async function POST(req: NextRequest) {
-    try {
-        const adminUser = await verifyAdmin(req);
+// GET /api/v1/admin/products - List all products
+export async function GET(req: NextRequest) {
+    return requireAdmin(req, async () => {
+        try {
+            const snapshot = await adminDb.collection('products')
+                .orderBy('createdAt', 'desc')
+                .get();
 
-        const data = await req.json();
-        if (!data.name || !data.slug || data.price === undefined || data.stock === undefined) {
-            return NextResponse.json({ error: 'Missing required fulfillment tracking fields' }, { status: 400 });
+            const products = snapshot.docs.map(doc => ({
+                productId: doc.id,
+                ...doc.data()
+            }));
+
+            return NextResponse.json({ products });
+        } catch (error) {
+            console.error('Error fetching products:', error);
+            return NextResponse.json(
+                { error: 'Failed to fetch products' },
+                { status: 500 }
+            );
         }
+    });
+}
 
-        const newDoc = adminDb.collection('products').doc();
-        await newDoc.set({
-            ...data,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        });
+// POST /api/v1/admin/products - Create new product
+export async function POST(req: NextRequest) {
+    return requireAdmin(req, async () => {
+        try {
+            const body = await req.json();
+            
+            // Validate input
+            const validatedData = productSchema.parse(body);
 
-        // Push rigid audit log of internal DB modifications
-        await adminDb.collection('auditLogs').add({
-            action: 'product.created',
-            actorId: adminUser.uid,
-            actorRole: adminUser.role,
-            targetId: newDoc.id,
-            timestamp: new Date()
-        });
+            // Check if slug already exists
+            const existingSlug = await adminDb.collection('products')
+                .where('slug', '==', validatedData.slug)
+                .limit(1)
+                .get();
 
-        return NextResponse.json({ id: newDoc.id, success: true });
-    } catch (error: any) {
-        if (error.message.includes('Forbidden')) return NextResponse.json({ error: error.message }, { status: 403 });
-        if (error.message.includes('Unauthorized')) return NextResponse.json({ error: error.message }, { status: 401 });
+            if (!existingSlug.empty) {
+                return NextResponse.json(
+                    { error: 'A product with this slug already exists' },
+                    { status: 400 }
+                );
+            }
 
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-    }
+            // Create product
+            const productRef = adminDb.collection('products').doc();
+            const productData = {
+                ...validatedData,
+                productId: productRef.id,
+                currency: 'USD',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            await productRef.set(productData);
+
+            return NextResponse.json({
+                success: true,
+                product: productData
+            }, { status: 201 });
+
+        } catch (error: any) {
+            if (error.name === 'ZodError') {
+                return NextResponse.json(
+                    { error: 'Validation failed', details: error.errors },
+                    { status: 400 }
+                );
+            }
+
+            console.error('Error creating product:', error);
+            return NextResponse.json(
+                { error: 'Failed to create product' },
+                { status: 500 }
+            );
+        }
+    });
 }

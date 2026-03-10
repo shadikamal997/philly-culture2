@@ -1,20 +1,24 @@
 'use client';
 import { useState } from 'react';
 import { useCartContext } from '@/context/CartContext';
-import { loadStripe } from '@stripe/stripe-js';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+interface ShippingInfo {
+    addressLine1?: string;
+    [key: string]: unknown;
+}
 
 export const CheckoutButton = ({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     customerInfo,
     shippingInfo,
     onValidationFail
 }: {
-    customerInfo?: any,
-    shippingInfo?: any,
-    onValidationFail?: () => void
+    customerInfo?: { email?: string; fullName?: string };
+    shippingInfo?: ShippingInfo;
+    onValidationFail?: () => void;
 }) => {
     const { items, hasPhysicalItems } = useCartContext();
+    // customerInfo reserved for future Stripe prefill
     const [loading, setLoading] = useState(false);
 
     const handleCheckout = async () => {
@@ -50,9 +54,9 @@ export const CheckoutButton = ({
             if (data.url) {
                 window.location.assign(data.url);
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error('Checkout failed:', error);
-            alert('Checkout failed: ' + error.message);
+            alert('Checkout failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
             setLoading(false);
         }
     };

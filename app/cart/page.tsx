@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCartContext } from '@/context/CartContext';
 
 export default function CartPage() {
@@ -45,9 +46,9 @@ export default function CartPage() {
 
                                     {/* Product Info */}
                                     <div className="col-span-1 border-b border-gray-100 pb-4 sm:border-0 sm:pb-0 sm:col-span-6 flex gap-4">
-                                        <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                                        <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
                                             {item.image ? (
-                                                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                                <Image src={item.image} alt={item.name} fill className="object-cover" />
                                             ) : (
                                                 <div className="w-full h-full flex flex-col items-center justify-center text-xs text-gray-400 font-medium">No Img</div>
                                             )}

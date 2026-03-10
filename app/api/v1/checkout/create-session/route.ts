@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/firebase/firebaseAdmin';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2023-10-16' as any });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder', { apiVersion: '2023-10-16' as Stripe.LatestApiVersion });
 
 export async function POST(req: NextRequest) {
     try {
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
         }
 
         const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
-        const metadataItems: any[] = [];
+        const metadataItems: { itemId: string; type: string; quantity: number }[] = [];
 
         for (const item of items) {
             let doc;
@@ -74,8 +74,8 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json({ url: session.url });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Stripe Checkout Error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
     }
 }

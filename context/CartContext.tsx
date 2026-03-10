@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 export type CartItemType = 'course' | 'product';
 
@@ -93,7 +93,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         );
     };
 
-    const clearCart = () => setItems([]);
+    const clearCart = useCallback(() => setItems([]), []);
 
     const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const hasPhysicalItems = items.some((item) => !item.isDigital);

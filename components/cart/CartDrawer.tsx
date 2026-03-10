@@ -1,6 +1,7 @@
 'use client';
 import { useCartContext } from '@/context/CartContext';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export const CartDrawer = () => {
     const { isDrawerOpen, closeDrawer, items, subtotal, removeItem, updateQuantity } = useCartContext();
@@ -32,9 +33,9 @@ export const CartDrawer = () => {
                     ) : (
                         items.map((item) => (
                             <div key={item.itemId} className="flex space-x-4">
-                                <div className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden flex-shrink-0">
+                                <div className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 relative">
                                     {item.image ? (
-                                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                        <Image src={item.image} alt={item.name} fill className="object-cover" />
                                     ) : (
                                         <div className="w-full h-full flex flex-col items-center justify-center text-xs text-gray-400 font-medium">No Img</div>
                                     )}

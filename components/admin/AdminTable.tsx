@@ -1,6 +1,6 @@
 // Placeholder for dynamic reusable datatable logic when integrated with Firebase
 
-export const AdminTable = ({ columns, data }: { columns: string[], data: any[] }) => {
+export const AdminTable = ({ columns, data }: { columns: string[]; data: Record<string, string | number | undefined>[] }) => {
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
             <table className="w-full text-left border-collapse">

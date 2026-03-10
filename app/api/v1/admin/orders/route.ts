@@ -1,24 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/firebase/firebaseAdmin';
-import { verifyAdmin } from '@/lib/adminGuard';
+import { requireAdmin } from '@/lib/roleGuard';
 
 export async function GET(req: NextRequest) {
-    try {
-        await verifyAdmin(req);
+    return requireAdmin(req, async () => {
+        try {
+            const { searchParams } = new URL(req.url);
+            const status = searchParams.get('status');
+            const limit = parseInt(searchParams.get('limit') || '50');
 
-        // Strict pagination and limits protecting against aggressive internal DB scans
-        const snapshot = await adminDb.collection('orders')
-            .orderBy('createdAt', 'desc')
-            .limit(50)
-            .get();
+            let query = adminDb.collection('orders')
+                .orderBy('createdAt', 'desc')
+                .limit(limit);
 
-        const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            if (status) {
+                query = query.where('status', '==', status) as any;
+            }
 
-        return NextResponse.json({ data: orders });
-    } catch (error: any) {
-        if (error.message.includes('Forbidden')) return NextResponse.json({ error: error.message }, { status: 403 });
-        if (error.message.includes('Unauthorized')) return NextResponse.json({ error: error.message }, { status: 401 });
+            const snapshot = await query.get();
 
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-    }
+            const orders = snapshot.docs.map(doc => ({
+                orderId: doc.id,
+                ...doc.data()
+            }));
+
+            return NextResponse.json({ orders });
+        } catch (error) {
+            console.error('Error fetching orders:', error);
+            return NextResponse.json(
+                { error: 'Failed to fetch orders' },
+                { status: 500 }
+            );
+        }
+    });
 }

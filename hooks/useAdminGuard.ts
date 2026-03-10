@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-// Note: Assuming a generic firebase context or direct auth import
-// Example: import { auth, db } from '@/firebase/firebaseClient';
+import { useAuth } from '@/hooks/useAuth';
 
 interface UseAdminGuardResult {
     isAdmin: boolean;
@@ -12,36 +11,45 @@ interface UseAdminGuardResult {
 
 export const useAdminGuard = (): UseAdminGuardResult => {
     const [isAdmin, setIsAdmin] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const { user, userData, loading: authLoading } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
-        // ⚠️ Placeholder: You must implement actual Firebase Auth listener here
-        // Example:
-        // const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        //   if (!user) {
-        //     router.push('/login');
-        //     return;
-        //   }
-        //   const userDoc = await getDoc(doc(db, 'users', user.uid));
-        //   if (userDoc.exists() && userDoc.data().role === 'admin') {
-        //     setIsAdmin(true);
-        //   } else {
-        //     router.push('/dashboard'); // Redirect non-admins to customer portal
-        //   }
-        //   setIsLoading(false);
-        // });
-        // return () => unsubscribe();
+        // Wait for authentication to complete
+        if (authLoading) {
+            return;
+        }
 
-        // Mock implementation for scaffold:
-        const mockCheck = setTimeout(() => {
-            // For testing, pretend we're admin. Change this when wiring real DB
+        // Check if user is logged in
+        if (!user) {
+            console.warn('🔒 Admin Guard: No user authenticated, redirecting to login');
+            router.replace('/login');
+            return;
+        }
+
+        // Check if user data is loaded and has admin role
+        if (!userData) {
+            console.warn('🔒 Admin Guard: User data not loaded yet');
+            setIsAdmin(false);
+            return;
+        }
+
+        // Verify admin role
+        const hasAdminRole = userData.role === 'admin';
+        
+        if (hasAdminRole) {
+            console.log('✅ Admin Guard: Access granted');
             setIsAdmin(true);
-            setIsLoading(false);
-        }, 500);
+        } else {
+            console.warn('🔒 Admin Guard: Insufficient permissions, redirecting to home');
+            alert('Access Denied: You do not have administrator privileges.');
+            router.replace('/');
+            setIsAdmin(false);
+        }
+    }, [user, userData, authLoading, router]);
 
-        return () => clearTimeout(mockCheck);
-    }, [router]);
+    // Loading state is true if auth is loading OR if we haven't determined admin status yet
+    const isLoading = authLoading || (!isAdmin && !!user && !!userData && userData.role !== 'admin');
 
     return { isAdmin, isLoading };
 };

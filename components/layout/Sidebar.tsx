@@ -6,13 +6,13 @@ export const Sidebar = () => {
     const pathname = usePathname();
 
     const links = [
-        { name: 'Overview', href: '/overview' },
-        { name: 'Courses', href: '/manage-courses' },
-        { name: 'Products', href: '/manage-products' },
-        { name: 'Orders', href: '/manage-orders' },
-        { name: 'Users', href: '/manage-users' },
-        { name: 'Analytics', href: '/analytics' },
-        { name: 'Settings', href: '/settings' },
+        { name: 'Overview', href: '/admin/overview' },
+        { name: 'Courses', href: '/admin/manage-courses' },
+        { name: 'Products', href: '/admin/manage-products' },
+        { name: 'Orders', href: '/admin/manage-orders' },
+        { name: 'Users', href: '/admin/manage-users' },
+        { name: 'Analytics', href: '/admin/analytics' },
+        { name: 'Settings', href: '/admin/settings' },
     ];
 
     return (

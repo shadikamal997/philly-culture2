@@ -8,115 +8,143 @@ service cloud.firestore {
 
     function isAdmin() {
       return request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["admin", "superadmin", "owner"];
     }
 
-    function isLessonAccessible(resourceData) {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && (
-          resourceData.isPreview == true
-          ||
-          resourceData.courseId in
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.purchasedCourses
-        );
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
     // =============================
     // USERS
     // =============================
     match /users/{userId} {
-
-      allow read: if request.auth != null 
-                  && request.auth.uid == userId;
-
-      allow create: if request.auth != null
-                    && request.auth.uid == userId;
-
-      allow update: if request.auth != null
+      // Users can read their own profile
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Users can create their own profile on first sign-up
+      // Allow role field on creation (needed for initial setup)
+      allow create: if isAuthenticated() 
                     && request.auth.uid == userId
-                    && !("role" in request.resource.data)
-                    && !("purchasedCourses" in request.resource.data);
-
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.email == request.auth.token.email;
+      
+      // Users can update their own profile but NOT the role field
+      allow update: if isAuthenticated() 
+                    && request.auth.uid == userId
+                    && !("role" in request.writeFields); // Prevent role modification after creation
+      
       allow delete: if false;
+    }
 
-      match /addresses/{addressId} {
-        allow read, write: if request.auth != null
-                           && request.auth.uid == userId;
-      }
-
-      match /certificates/{certId} {
-        allow read: if request.auth != null
-                    && request.auth.uid == userId;
-        allow write: if false;
-      }
+    // =============================
+    // PROGRAMS (Academy Courses)
+    // =============================
+    match /programs/{programId} {
+      // Anyone can read published programs
+      allow read: if resource.data.published == true || isAdmin();
+      
+      // Only admins can create/update/delete
+      allow create, update, delete: if isAdmin();
     }
 
     // =============================
     // COURSES
     // =============================
     match /courses/{courseId} {
-
-      allow read: if resource.data.published == true;
-
-      allow write: if isAdmin();
+      // Anyone can read published course metadata
+      allow read: if resource.data.published == true || isAdmin();
+      
+      // Only admins can create/update/delete
+      allow create, update, delete: if isAdmin();
+      
+      // Course lessons subcollection
+      match /lessons/{lessonId} {
+        // Only enrolled users or admins can access lessons
+        allow read: if isAdmin() 
+                    || (isAuthenticated() 
+                        && courseId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.purchasedCourses);
+        
+        // Only admins can manage lessons
+        allow create, update, delete: if isAdmin();
+      }
     }
 
     // =============================
-    // LESSONS
+    // USER COURSE PROGRESS
     // =============================
-    match /lessons/{lessonId} {
-
-      allow read: if isLessonAccessible(resource.data);
-
-      allow write: if isAdmin();
+    match /users/{userId}/courseProgress/{courseId} {
+      // Users can read their own progress
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Users can update their own progress if they're enrolled
+      allow write: if isAuthenticated() 
+                   && request.auth.uid == userId
+                   && courseId in get(/databases/$(database)/documents/users/$(userId)).data.purchasedCourses;
     }
 
     // =============================
-    // PRODUCTS
+    // ENROLLMENTS (Student Purchases)
     // =============================
-    match /products/{productId} {
-
-      allow read: if true;
-
-      allow write: if isAdmin();
-    }
-
-    // =============================
-    // ORDERS
-    // =============================
-    match /orders/{orderId} {
-
-      allow read: if request.auth != null
-                  && request.auth.uid == resource.data.userId;
-
-      allow create: if false; // Only backend creates
-
-      allow update: if false; // Only backend updates
-
+    match /enrollments/{enrollmentId} {
+      // Users can only read their own enrollments
+      allow read: if isAuthenticated() 
+                  && resource.data.userEmail == request.auth.token.email;
+      
+      // Only backend creates enrollments (via webhook)
+      allow create: if false;
+      
+      // Only backend or admin can update
+      allow update: if isAdmin();
+      
       allow delete: if false;
     }
 
     // =============================
-    // REVIEWS
+    // WEBHOOK EVENTS (Idempotency)
     // =============================
-    match /reviews/{reviewId} {
-
-      allow read: if true;
-
-      allow create: if request.auth != null;
-
-      allow update, delete: if request.auth != null
-                            && request.auth.uid == resource.data.userId;
+    match /webhookEvents/{eventId} {
+      // No client access - backend only
+      allow read, write: if false;
     }
 
     // =============================
-    // CARTS
+    // ADMIN LOGS (Audit Trail)
     // =============================
-    match /carts/{userId} {
+    match /adminLogs/{logId} {
+      // Only admins can read audit logs
+      allow read: if isAdmin();
+      
+      // No client writes - backend only
+      allow write: if false;
+    }
 
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
+    // =============================
+    // LEGACY COLLECTIONS (Deprecated)
+    // =============================
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create, update, delete: if false;
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /tools/{toolId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    match /carts/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
     }
   }
 }

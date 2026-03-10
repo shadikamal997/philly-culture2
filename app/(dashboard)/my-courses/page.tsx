@@ -28,7 +28,10 @@ export default function MyCoursesPage() {
         );
         const snapshot = await getDocs(q);
 
-        const loadedCourses = snapshot.docs.map(doc => ({ courseId: doc.id, ...doc.data() } as Course));
+        const loadedCourses = snapshot.docs.map(doc => ({
+          courseId: doc.id,
+          ...doc.data()
+        } as Course));
         setCourses(loadedCourses);
       } catch (err) {
         console.error("Failed to load secure courses", err);
@@ -40,46 +43,70 @@ export default function MyCoursesPage() {
     fetchPurchasedCourses();
   }, [userData]);
 
-  if (loading) return <div className="text-zinc-500 animate-pulse">Loading Video Library...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-red-200 dark:border-red-900 border-t-red-600 dark:border-t-red-400 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading your courses...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-2">My Library</h1>
-      <p className="text-zinc-400 mb-8 flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
-        Access your purchased courses and masterclasses.
-      </p>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">My Courses</h1>
+        <p className="text-gray-600 dark:text-gray-400">Access and continue your enrolled courses</p>
+      </div>
 
-      {courses.length === 0 ? (
-        <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-xl text-center">
-          <h2 className="text-xl font-bold mb-4">No courses yet.</h2>
-          <p className="text-zinc-500 mb-6">Head over to the Academy to start learning.</p>
-          <Link href="/academy" className="bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 px-6 rounded-lg transition-colors inline-block">
-            Browse Academy
-          </Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {courses.map(course => (
-            <div key={course.courseId} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex gap-4 hover:border-amber-500 transition-colors">
-              <div className="w-32 h-24 bg-zinc-800 rounded-lg overflow-hidden flex-shrink-0 relative">
-                {course.thumbnailURL ? (
-                  <img src={course.thumbnailURL} alt={course.title} className="object-cover w-full h-full" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs border-dashed border-2 m-1">No Image</div>
-                )}
-              </div>
-              <div className="flex flex-col justify-between w-full">
-                <div>
-                  <h3 className="font-bold text-lg leading-tight mb-1">{course.title}</h3>
-                  <span className="text-xs text-amber-500 font-bold uppercase">{course.difficulty}</span>
+      {courses.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.map((course) => (
+            <div key={course.courseId} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-xl transition-shadow">
+              {course.thumbnailURL && (
+                <div className="h-48 bg-gray-200 overflow-hidden">
+                  <img
+                    src={course.thumbnailURL}
+                    alt={course.title}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-                <Link href={`/dashboard/course/${course.courseId}`} className="text-sm font-bold bg-white text-black py-1 px-4 rounded-full text-center transition-opacity hover:opacity-80 w-max mt-2">
-                  Resume Course
-                </Link>
+              )}
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{course.title}</h3>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">{course.description}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {course.difficulty} • {course.duration}h
+                  </span>
+                  <Link
+                    href={`/course/${course.courseId}`}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Continue Learning
+                  </Link>
+                </div>
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="text-center py-20">
+          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No courses yet</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">You haven't enrolled in any courses yet.</p>
+          <Link
+            href="/programs"
+            className="inline-flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+          >
+            Browse Programs
+          </Link>
         </div>
       )}
     </div>

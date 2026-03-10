@@ -1,14 +1,17 @@
 import { Timestamp } from 'firebase/firestore';
 
+export type Role = 'customer' | 'owner' | 'assistant';
+
 export interface User {
     uid: string;
     fullName: string;
     email: string;
-    role: 'user' | 'admin';
+    role: Role;
     phone?: string;
     photoURL?: string;
 
     purchasedCourses: string[]; // array of course IDs
+    enrolledCourses?: string[]; // Alias for purchasedCourses (compatibility)
     createdAt: Timestamp;
     updatedAt: Timestamp;
 

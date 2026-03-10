@@ -3,19 +3,28 @@ import { Timestamp } from 'firebase/firestore';
 export interface Course {
     courseId: string;
     title: string;
-    slug: string;
+    slug?: string;
     description: string;
-    shortDescription: string;
+    shortDescription?: string;
     price: number;
-    currency: 'USD';
-    thumbnailURL: string;
-    previewVideoURL: string;
-    difficulty: 'beginner' | 'intermediate' | 'advanced';
-    duration: number; // in hours or minutes depending on your display setup
-    totalLessons: number;
+    currency?: 'USD';
+    thumbnailURL?: string;
+    previewVideoURL?: string;
+    difficulty?: 'beginner' | 'intermediate' | 'advanced';
+    duration?: number; // in hours or minutes depending on your display setup
+    totalLessons?: number;
     published: boolean;
+    isPublished?: boolean; // Alias for published
+    level?: string; // For compatibility
+    status: 'draft' | 'published';
+    
+    // Tax-related fields
+    taxable: boolean;
+    taxCategory: string;
+    
     createdAt: Timestamp;
     updatedAt: Timestamp;
+    createdBy?: string;
 }
 
 export interface Lesson {

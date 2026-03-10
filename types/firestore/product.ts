@@ -15,6 +15,7 @@ export interface Product {
     images: string[];
     weight?: number; // useful for shipping calculations
     isDigital: boolean;
+    isActive?: boolean; // For filtering published products
     createdAt: Timestamp;
     updatedAt: Timestamp;
 }

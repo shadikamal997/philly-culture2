@@ -1,12 +1,25 @@
 import { adminDb } from '@/firebase/firebaseAdmin';
-import { Course, Lesson } from '@/types/firestore/course';
+import { Course } from '@/types/firestore/course';
+import { Lesson } from '@/types/firestore/lesson';
 
 export async function getPublishedCourses(): Promise<Course[]> {
     const snapshot = await adminDb.collection('courses')
         .where('isPublished', '==', true)
         .get();
 
-    return snapshot.docs.map(doc => ({ courseId: doc.id, ...doc.data() } as Course));
+    return snapshot.docs.map(doc => ({
+        courseId: doc.id,
+        ...doc.data()
+    } as Course));
+}
+
+export async function getCourseById(courseId: string): Promise<Course | null> {
+    const doc = await adminDb.collection('courses').doc(courseId).get();
+    if (!doc.exists) return null;
+    return {
+        courseId: doc.id,
+        ...doc.data()
+    } as Course;
 }
 
 export async function getCourseBySlug(slug: string): Promise<Course | null> {
@@ -16,7 +29,11 @@ export async function getCourseBySlug(slug: string): Promise<Course | null> {
         .get();
 
     if (snapshot.empty) return null;
-    return { courseId: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Course;
+    const docData = snapshot.docs[0].data();
+    return {
+        courseId: snapshot.docs[0].id,
+        ...docData
+    } as Course;
 }
 
 export async function getCourseLessons(courseId: string): Promise<Lesson[]> {
@@ -27,5 +44,8 @@ export async function getCourseLessons(courseId: string): Promise<Lesson[]> {
         .orderBy('order', 'asc')
         .get();
 
-    return snapshot.docs.map(doc => ({ lessonId: doc.id, ...doc.data() } as Lesson));
+    return snapshot.docs.map(doc => ({
+        lessonId: doc.id,
+        ...doc.data()
+    } as Lesson));
 }

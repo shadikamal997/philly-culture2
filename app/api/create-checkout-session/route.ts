@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import Stripe from 'stripe';
 import { stripe } from '@/services/stripeService';
 import { adminDb as db } from '@/firebase/firebaseAdmin';
 import { Course } from '@/types/firestore/course';
@@ -16,7 +17,10 @@ interface CreateCheckoutRequest {
   cartItems: CartItemInput[];
 }
 
-const TAX_RATE = 0.08; // 8% Placeholder
+// NOTE: Tax calculation uses estimated rate since Stripe collects address during checkout
+// For exact tax: Enable Stripe Tax API or calculate tax after address is collected
+// The taxService is available for server-side calculation when address is known
+const TAX_RATE = 0.08; // 8% Estimated (US average)
 const SHIPPING_UNDER_50 = 7.00;
 const SHIPPING_THRESHOLD = 50.00;
 
@@ -40,22 +44,33 @@ export async function POST(req: Request) {
     let subtotal = 0;
     let hasPhysicalProducts = false;
     const validatedOrderItems: OrderItem[] = [];
-    const stripeLineItems: any[] = [];
+    const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
     // 2. Process Items and Fetch Server-Side Prices
     for (const item of cartItems) {
       if (item.type === 'course') {
         const courseSnap = await db.collection('courses').doc(item.itemId).get();
-        if (!courseSnap.exists) continue; // Or throw error
+        if (!courseSnap.exists) {
+          return NextResponse.json({ error: `Course ${item.itemId} not found` }, { status: 400 });
+        }
 
         const course = courseSnap.data() as Course;
+        
+        // SECURITY: Only allow published courses
+        if (course.status !== 'published') {
+          return NextResponse.json({ error: `Course ${course.title} is not available for purchase` }, { status: 400 });
+        }
+        
+        // Use server-side price only
         subtotal += course.price * item.quantity;
 
         validatedOrderItems.push({
           type: 'course',
-          itemId: item.itemId,
+          id: item.itemId,
+          title: course.title,
           quantity: item.quantity,
-          price: course.price
+          price: course.price,
+          taxable: true
         });
 
         stripeLineItems.push({
@@ -73,9 +88,23 @@ export async function POST(req: Request) {
 
       } else if (item.type === 'product') {
         const productSnap = await db.collection('products').doc(item.itemId).get();
-        if (!productSnap.exists) continue;
+        if (!productSnap.exists) {
+          return NextResponse.json({ error: `Product ${item.itemId} not found` }, { status: 400 });
+        }
 
         const product = productSnap.data() as Product;
+        
+        // SECURITY: Only allow active products
+        if (product.isActive === false) {
+          return NextResponse.json({ error: `Product ${product.name} is not available for purchase` }, { status: 400 });
+        }
+        
+        // SECURITY: Check inventory for physical products
+        if (!product.isDigital && product.stock !== undefined && product.stock < item.quantity) {
+          return NextResponse.json({ error: `Insufficient inventory for ${product.name}` }, { status: 400 });
+        }
+        
+        // Use server-side price only
         subtotal += product.price * item.quantity;
 
         if (!product.isDigital) {
@@ -83,10 +112,12 @@ export async function POST(req: Request) {
         }
 
         validatedOrderItems.push({
-          type: 'product',
-          itemId: item.itemId,
+          type: 'tool',
+          id: item.itemId,
+          title: product.name,
           quantity: item.quantity,
-          price: product.price
+          price: product.price,
+          taxable: true
         });
 
         stripeLineItems.push({
@@ -160,10 +191,10 @@ export async function POST(req: Request) {
     // 5. Create Stripe Checkout Session
     const domainInfo = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
-    const sessionConfig: any = {
+    const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       line_items: stripeLineItems,
       mode: 'payment',
-      success_url: `${domainInfo}/dashboard/orders?success=true`,
+      success_url: `${domainInfo}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${domainInfo}/cart?cancelled=true`,
       client_reference_id: userId,
       metadata: {
@@ -189,8 +220,8 @@ export async function POST(req: Request) {
     // 7. Return URL to frontend
     return NextResponse.json({ url: session.url, orderId: orderRef.id });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating checkout session:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }

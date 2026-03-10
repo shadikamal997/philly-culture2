@@ -3,12 +3,7 @@ import { stripe } from '@/services/stripeService';
 import { adminDb as db } from '@/firebase/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import Stripe from 'stripe';
-
-export const config = {
-  api: {
-    bodyParser: false, // Essential for Stripe Webhooks to raw read
-  },
-};
+import { emailService } from '@/services/emailService';
 
 export async function POST(req: Request) {
   try {
@@ -24,68 +19,172 @@ export async function POST(req: Request) {
 
     try {
       event = stripe.webhooks.constructEvent(rawBody, signature, secret);
-    } catch (err: any) {
-      console.error(`⚠️ Webhook signature verification failed.`, err.message);
+    } catch (err) {
+      console.error(`⚠️ Webhook signature verification failed.`, err instanceof Error ? err.message : err);
       return NextResponse.json({ error: 'Webhook Error' }, { status: 400 });
     }
 
-    // Handle checkout session completed
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
+    // IDEMPOTENCY: Check if this event was already processed
+    const eventDoc = await db.collection('webhookEvents').doc(event.id).get();
+    if (eventDoc.exists) {
+      // Event already processed, skipping
+      return NextResponse.json({ received: true, status: 'already_processed' });
+    }
 
-      const orderId = session.metadata?.orderId;
-      const stripePaymentIntentId = session.payment_intent as string; // Will exist on completed sessions
+    // Log event receipt
+    await db.collection('webhookEvents').doc(event.id).set({
+      eventId: event.id,
+      type: event.type,
+      receivedAt: new Date(),
+      processed: false,
+    });
 
-      if (!orderId) {
-        console.error('Webhook Error: Missing orderId in session metadata');
+    // Handle successful payment
+    if (event.type === 'payment_intent.succeeded') {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      
+      const metadata = paymentIntent.metadata;
+      const userId = metadata?.userId;
+      const items = metadata?.items ? JSON.parse(metadata.items) : [];
+      
+      if (!userId || !items.length) {
+        console.error('Webhook Error: Missing userId or items in payment intent metadata');
         return NextResponse.json({ error: 'Missing metadata' }, { status: 400 });
       }
 
-      const orderRef = db.collection('orders').doc(orderId);
-      const orderSnap = await orderRef.get();
+      // Create Order in Firestore
+      const orderRef = db.collection('orders').doc();
+      const orderId = orderRef.id;
 
-      if (!orderSnap.exists) {
-        console.error('Webhook Error: Order not found in Firestore', orderId);
-        return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-      }
-
-      const orderData = orderSnap.data();
-
-      // Update Order Status
-      await orderRef.update({
+      const orderData = {
+        userId,
+        items,
+        subtotal: Number(metadata.subtotal) || 0,
+        taxAmount: Number(metadata.taxAmount) || 0,
+        taxRate: Number(metadata.taxRate) || 0,
+        state: metadata.state || '',
+        total: paymentIntent.amount / 100, // Convert cents to dollars
+        stripePaymentIntentId: paymentIntent.id,
         status: 'paid',
-        stripePaymentIntentId,
-        updatedAt: new Date() // Fallback to simpler dates on cloud funcs or webhook routes
-      });
+        shippingAddress: metadata.shippingAddress ? JSON.parse(metadata.shippingAddress) : null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-      // Process Items (Unlock courses, reduce stock)
-      if (orderData?.items && Array.isArray(orderData.items)) {
-        for (const item of orderData.items) {
-          if (item.type === 'course') {
-            const userRef = db.collection('users').doc(orderData.userId);
-            // using admin FieldValue for arrayUnion to avoid duplicates
-            await userRef.update({
-              purchasedCourses: FieldValue.arrayUnion(item.itemId)
-            });
-            console.log(`Unlocked course ${item.itemId} for user ${orderData.userId}`);
-          } else if (item.type === 'product') {
-            const productRef = db.collection('products').doc(item.itemId);
-            await productRef.update({
-              stock: FieldValue.increment(-item.quantity)
-            });
-            console.log(`Reduced stock for product ${item.itemId} by ${item.quantity}`);
+      await orderRef.set(orderData);
+      // Order created successfully
+
+      // Process Items (Unlock courses, reduce inventory using transactions)
+      for (const item of items) {
+        if (item.type === 'course') {
+          // Add course to user's enrolled courses
+          const userRef = db.collection('users').doc(userId);
+          await userRef.update({
+            enrolledCourses: FieldValue.arrayUnion(item.id)
+          });
+          // Course unlocked for user
+
+          // Send enrollment email
+          try {
+            const userSnap = await userRef.get();
+            const userData = userSnap.data();
+            if (userData?.email) {
+              const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+              await emailService.sendEnrollmentConfirmation({
+                recipientEmail: userData.email,
+                recipientName: userData.name || 'Student',
+                courseName: item.title,
+                courseUrl: `${siteUrl}/course/${item.id}`,
+                enrollmentDate: new Date(),
+              });
+              // Enrollment email sent
+            }
+          } catch (emailError) {
+            console.error('❌ Failed to send enrollment email:', emailError);
           }
+
+        } else if (item.type === 'tool') {
+          // Deduct inventory using transaction to prevent race conditions
+          const toolRef = db.collection('tools').doc(item.id);
+          
+          await db.runTransaction(async (transaction) => {
+            const toolDoc = await transaction.get(toolRef);
+            if (!toolDoc.exists) {
+              throw new Error(`Tool ${item.id} not found`);
+            }
+            
+            const currentInventory = toolDoc.data()?.inventory || 0;
+            const newInventory = Math.max(0, currentInventory - item.quantity);
+            
+            transaction.update(toolRef, {
+              inventory: newInventory,
+              updatedAt: new Date(),
+            });
+            
+            // Inventory updated
+          });
         }
       }
 
-      // TODO: Placeholder to Trigger Resend or SendGrid confirmation email here
-      console.log(`Sending Confirmation Email for order ${orderId} to ${session.customer_details?.email}`);
+      // Send order confirmation email
+      try {
+        const userRef = db.collection('users').doc(userId);
+        const userSnap = await userRef.get();
+        const userData = userSnap.data();
+        
+        if (userData?.email) {
+          const itemsForEmail = items.map((item: any) => ({
+            name: item.title,
+            quantity: item.quantity,
+            price: item.price,
+          }));
+
+          await emailService.sendOrderConfirmation({
+            recipientEmail: userData.email,
+            recipientName: userData.name || 'Customer',
+            orderId: orderId,
+            orderDate: new Date(),
+            items: itemsForEmail,
+            subtotal: orderData.subtotal,
+            tax: orderData.taxAmount,
+            shipping: 0, // Update if you add shipping calculation
+            total: orderData.total,
+            shippingAddress: orderData.shippingAddress,
+          });
+          // Confirmation email sent
+        }
+      } catch (emailError) {
+        console.error('❌ Failed to send order confirmation email:', emailError);
+      }
     }
+
+    // Handle failed payment
+    if (event.type === 'payment_intent.payment_failed') {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      
+      // Log failed payment to Firestore for debugging
+      await db.collection('failedPayments').add({
+        paymentIntentId: paymentIntent.id,
+        userId: paymentIntent.metadata?.userId || null,
+        amount: paymentIntent.amount / 100,
+        currency: paymentIntent.currency,
+        failureMessage: paymentIntent.last_payment_error?.message || 'Unknown error',
+        createdAt: new Date(),
+      });
+      
+      console.error(`❌ Payment failed for PaymentIntent ${paymentIntent.id}: ${paymentIntent.last_payment_error?.message}`);
+    }
+
+    // Mark event as processed
+    await db.collection('webhookEvents').doc(event.id).update({
+      processed: true,
+      processedAt: new Date(),
+    });
 
     return NextResponse.json({ received: true });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Webhook error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }

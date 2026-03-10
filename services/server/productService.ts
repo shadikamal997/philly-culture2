@@ -6,7 +6,10 @@ export async function getActiveProducts(): Promise<Product[]> {
         .where('isActive', '==', true)
         .get();
 
-    return snapshot.docs.map(doc => ({ productId: doc.id, ...doc.data() } as Product));
+    return snapshot.docs.map(doc => ({
+        productId: doc.id,
+        ...doc.data()
+    } as Product));
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
@@ -16,5 +19,9 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
         .get();
 
     if (snapshot.empty) return null;
-    return { productId: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Product;
+    const docData = snapshot.docs[0].data();
+    return {
+        productId: snapshot.docs[0].id,
+        ...docData
+    } as Product;
 }

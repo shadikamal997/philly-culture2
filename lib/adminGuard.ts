@@ -4,7 +4,7 @@ import { verifyAuth } from './authGuard';
 export async function verifyAdmin(request: NextRequest) {
     const user = await verifyAuth(request);
 
-    if (user.role !== 'admin' && user.role !== 'superadmin') {
+    if (user.role !== 'admin' && user.role !== 'superadmin' && user.role !== 'owner') {
         throw new Error('Forbidden: Admin access required');
     }
 

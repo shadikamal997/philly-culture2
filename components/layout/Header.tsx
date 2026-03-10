@@ -16,7 +16,7 @@ export function Header() {
                 {user ? (
                     <div className="flex items-center gap-4">
                         <Link href="/dashboard" className="text-amber-500 hover:text-amber-400 font-medium">Dashboard</Link>
-                        <button onClick={() => logout()} className="text-zinc-500 hover:text-white text-sm">Logout</button>
+                        <button onClick={async () => await logout()} className="text-zinc-500 hover:text-white text-sm">Logout</button>
                     </div>
                 ) : (
                     <div className="flex items-center gap-4">

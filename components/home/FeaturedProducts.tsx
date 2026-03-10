@@ -1,67 +1,119 @@
 'use client';
 
-import { useCartContext } from '@/context/CartContext';
-import { ShoppingBag } from 'lucide-react';
-import Link from 'next/link';
+export default function FeaturedProducts() {
+  const products = [
+    {
+      title: 'Signature Cheesesteak Kit',
+      description: 'Everything you need to make authentic Philly cheesesteaks at home',
+      price: 89,
+      image: 'https://images.unsplash.com/photo-1607013251379-e6eecfffe234?w=800&q=80',
+      badge: 'Best Seller',
+    },
+    {
+      title: 'Premium Sauce Collection',
+      description: 'Our signature sauces and seasonings in one bundle',
+      price: 34,
+      image: 'https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=800&q=80',
+      badge: 'New',
+    },
+    {
+      title: 'Chef\'s Essentials Bundle',
+      description: 'Professional-grade tools and ingredients for home cooks',
+      price: 129,
+      image: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&q=80',
+      badge: 'Premium',
+    },
+  ];
 
-export const FeaturedProducts = () => {
-    const { addItem } = useCartContext();
+  return (
+    <section className="py-24 sm:py-32 px-6 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
+      <div className="max-w-7xl mx-auto">
+        {/* Section Header */}
+        <div className="text-center mb-16">
+          <h2 className="text-sm font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide mb-3">
+            Shop
+          </h2>
+          <h3 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+            Bring the Flavor Home
+          </h3>
+          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+            Authentic ingredients and tools delivered to your door
+          </p>
+        </div>
 
-    const products = [
-        { id: 'p1', name: 'Signature Secret Sauce', category: 'sauces', price: 12.99, img: 'https://images.unsplash.com/photo-1599813958994-1a3b914856f6?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80' },
-        { id: 'p2', name: 'Original Cheesesteak Kit', category: 'kits', price: 65.00, img: 'https://images.unsplash.com/photo-1574213038661-bc8ee08b04a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80' },
-        { id: 'p3', name: 'Philly Spice Blend', category: 'tools', price: 9.50, img: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80' },
-        { id: 'p4', name: 'Chef Canvas Apron', category: 'merchandise', price: 35.00, img: 'https://images.unsplash.com/photo-1583337225181-ed6a1334c9f7?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80' }
-    ];
-
-    return (
-        <section className="py-24 bg-gray-50 border-y border-gray-100">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="text-center mb-16">
-                    <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4 tracking-tight">Bring the <span className="text-green-600">Flavor</span> Home</h2>
-                    <p className="text-xl text-gray-600 max-w-2xl mx-auto">Shop our authentic kits, sauces, and culinary tools. Shipped nationally across the US.</p>
+        {/* Product Grid */}
+        <div className="grid md:grid-cols-3 gap-8">
+          {products.map((product, index) => (
+            <div 
+              key={index}
+              className="group relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 animate-scale-in"
+              style={{ animationDelay: `${index * 0.15}s` }}
+            >
+              {/* Product Image */}
+              <div className="relative h-80 overflow-hidden">
+                <div 
+                  className="absolute inset-0 bg-cover bg-center transform group-hover:scale-110 transition-transform duration-700"
+                  style={{ backgroundImage: `url(${product.image})` }}
+                ></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                
+                {/* Badge */}
+                <div className="absolute top-4 left-4">
+                  <span className="inline-block bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+                    {product.badge}
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 hover:cursor-pointer">
-                    {products.map(product => (
-                        <div key={product.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 group">
-                            <Link href={`/shop/${product.id}`} className="block relative aspect-square overflow-hidden bg-gray-100">
-                                <img src={product.img} alt={product.name} className="w-full h-full object-cover mix-blend-multiply group-hover:scale-105 transition-transform duration-500" />
-                            </Link>
-                            <div className="p-6">
-                                <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-2">{product.category}</p>
-                                <Link href={`/shop/${product.id}`}>
-                                    <h3 className="text-lg font-bold text-gray-900 mb-1 leading-snug group-hover:text-green-600 transition">{product.name}</h3>
-                                </Link>
-                                <div className="flex items-center justify-between mt-4">
-                                    <span className="text-xl font-extrabold text-gray-900">${product.price.toFixed(2)}</span>
-                                    <button
-                                        onClick={() => addItem({
-                                            itemId: product.id,
-                                            type: 'product',
-                                            name: product.name,
-                                            price: product.price,
-                                            quantity: 1,
-                                            image: product.img,
-                                            isDigital: false
-                                        })}
-                                        className="w-10 h-10 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition shadow-sm"
-                                        aria-label="Add to cart"
-                                    >
-                                        <ShoppingBag className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+                {/* Quick Add Button */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <button className="bg-white dark:bg-black text-black dark:text-white px-6 py-2 rounded-full font-semibold shadow-xl hover:bg-red-600 hover:text-white transition-colors">
+                    Quick Add
+                  </button>
                 </div>
+              </div>
 
-                <div className="mt-16 text-center">
-                    <Link href="/shop" className="inline-flex items-center justify-center px-8 py-4 border-2 border-gray-900 text-gray-900 font-bold rounded-full hover:bg-gray-900 hover:text-white transition-colors">
-                        View All Products
-                    </Link>
+              {/* Product Details */}
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+                    {product.title}
+                  </h4>
+                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                    ${product.price}
+                  </span>
                 </div>
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  {product.description}
+                </p>
+
+                {/* View Product Link */}
+                <a 
+                  href="/shop"
+                  className="inline-flex items-center text-sm font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors group/link"
+                >
+                  View Product
+                  <svg className="w-4 h-4 ml-1 group-hover/link:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </a>
+              </div>
             </div>
-        </section>
-    );
-};
+          ))}
+        </div>
+
+        {/* Browse All Link */}
+        <div className="text-center mt-12">
+          <a 
+            href="/shop" 
+            className="inline-flex items-center px-8 py-4 text-lg font-semibold text-white bg-black dark:bg-white dark:text-black rounded-full hover:bg-red-600 dark:hover:bg-red-500 transition-all duration-300 hover:scale-105 shadow-lg"
+          >
+            Browse All Products
+            <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
