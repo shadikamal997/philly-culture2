@@ -6,6 +6,17 @@ import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 
+/**
+ * Sanitize user input to prevent XSS attacks
+ * Removes HTML tags and dangerous characters
+ */
+function sanitizeInput(input: string): string {
+  return input
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/[<>\"']/g, '') // Remove dangerous characters
+    .trim();
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const { signUp, signInWithGoogle } = useAuth();
@@ -54,10 +65,14 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const fullName = `${formData.firstName} ${formData.lastName}`;
+      // 🔒 SECURITY: Sanitize user input to prevent XSS
+      const sanitizedFirstName = sanitizeInput(formData.firstName);
+      const sanitizedLastName = sanitizeInput(formData.lastName);
+      const fullName = `${sanitizedFirstName} ${sanitizedLastName}`;
+      
       await signUp(formData.email, formData.password, fullName);
       toast.success('Account created! Please check your email to verify your account.');
-      router.push('/dashboard');
+      // User will be redirected after email verification
     } catch (error: any) {
       console.error('Registration error:', error);
       if (error.message.includes('email-already-in-use')) {

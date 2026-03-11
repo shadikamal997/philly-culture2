@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { adminAuth, adminDb } from '@/firebase/firebaseAdmin';
 import AdminSidebar from '@/components/admin/AdminSidebar';
+import { isPrivilegedRole } from '@/lib/constants/roles';
 
 export default async function AdminLayout({
   children,
@@ -33,7 +34,7 @@ export default async function AdminLayout({
       if (!userDoc.exists) redirect('/login?redirect=/admin');
 
       const userRole = userDoc.data()?.role;
-      if (userRole !== 'admin' && userRole !== 'superadmin' && userRole !== 'owner') {
+      if (!isPrivilegedRole(userRole)) {
         redirect('/?error=unauthorized');
       }
 
@@ -44,29 +45,13 @@ export default async function AdminLayout({
             <div className="p-8">{children}</div>
           </main>
         </div>
-      );
-    } catch (error) {
+      );  } catch (error) {
       console.error('Admin session verification error:', error);
-      // Don't redirect yet — fall through to role cookie check below
+      // Session verification failed - redirect to login with error
+      redirect('/login?error=session_expired&redirect=/admin');
     }
   }
 
-  // Fallback: verify using the role cookie (set by Firebase client SDK in AuthContext).
-  // This handles the case where the session API had a transient failure but
-  // the user IS genuinely authenticated via Firebase client SDK.
-  const privilegedRoles = ['admin', 'superadmin', 'owner'];
-  if (roleCookie && privilegedRoles.includes(roleCookie)) {
-    return (
-      <div className="flex min-h-screen bg-gray-50 dark:bg-black">
-        <AdminSidebar />
-        <main className="flex-1 overflow-x-hidden">
-          <div className="p-8">{children}</div>
-        </main>
-      </div>
-    );
-  }
-
+  // No valid session token found - require login
   redirect('/login?redirect=/admin');
-}
-  }
 }

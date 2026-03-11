@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import toast, { Toaster } from "react-hot-toast";
 import { db } from "@/firebase/firebaseClient";
 import { doc, getDoc } from "firebase/firestore";
+import { isPrivilegedRole } from "@/lib/constants/roles";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -46,9 +47,6 @@ export default function LoginPage() {
     }
   };
 
-  const isPrivilegedRole = (role: string | null) =>
-    role === 'admin' || role === 'superadmin' || role === 'owner';
-
   const redirectByRole = (role: string | null, wantsAdmin: boolean) => {
     if (wantsAdmin && !isPrivilegedRole(role)) {
       // Explicitly requested admin but role doesn't qualify
@@ -85,7 +83,19 @@ export default function LoginPage() {
       redirectByRole(role, isAdminLogin);
     } catch (err: any) {
       console.error("Login error:", err);
-      toast.error(err.message || "Failed to sign in");
+      
+      // Better error messages for common issues
+      if (err.message?.includes('email') && err.message?.includes('verif')) {
+        toast.error('Please verify your email address before signing in. Check your inbox.');
+      } else if (err.message?.includes('invalid-credential') || err.message?.includes('wrong-password')) {
+        toast.error('Invalid email or password');
+      } else if (err.message?.includes('too-many-requests')) {
+        toast.error('Too many login attempts. Please wait a few minutes.');
+      } else if (err.message?.includes('user-not-found')) {
+        toast.error('No account found with this email');
+      } else {
+        toast.error(err.message || "Failed to sign in");
+      }
       setLoading(false);
     }
   };

@@ -66,9 +66,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             clearTimeout(loadingTimeout); // Cancel timeout since auth fired
             console.log('🔵 Auth state changed:', currentUser ? `User: ${currentUser.email}` : 'No user');
-            setUser(currentUser);
-
+            
             if (currentUser) {
+                // 🔒 SECURITY: Enforce email verification
+                if (!currentUser.emailVerified) {
+                    console.warn('⚠️  Email not verified - blocking access');
+                    setUser(null);
+                    setUserData(null);
+                    setLoading(false);
+                    
+                    // Send verification email if not already sent recently
+                    try {
+                        await sendEmailVerification(currentUser);
+                        console.log('📧 Verification email sent');
+                    } catch (error: any) {
+                        // Ignore error if email was sent recently
+                        if (!error.message?.includes('too-many-requests')) {
+                            console.error('Failed to send verification email:', error);
+                        }
+                    }
+                    
+                    // Sign out unverified user
+                    await firebaseSignOut(auth);
+                    return;
+                }
+                
+                setUser(currentUser);
+                
                 try {
                     const docRef = doc(db, 'users', currentUser.uid);
                     const docSnap = await getDoc(docRef);
@@ -89,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     setUserData(null);
                 }
             } else {
+                setUser(null);
                 setUserData(null);
                 document.cookie = 'role=; path=/; max-age=0';
             }
@@ -153,7 +178,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             await updateProfile(user, { displayName: name });
 
-            const role = email === process.env.NEXT_PUBLIC_OWNER_EMAIL ? 'owner' : 'customer';
+            // 🔒 SECURITY: Get role from server-side (owner email not exposed to client)
+            const idToken = await user.getIdToken();
+            let role = 'customer';
+            
+            try {
+                const roleResponse = await fetch('/api/user/get-role', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${idToken}`,
+                    },
+                    body: JSON.stringify({ uid: user.uid, email }),
+                });
+                
+                if (roleResponse.ok) {
+                    const { role: serverRole } = await roleResponse.json();
+                    role = serverRole;
+                } else {
+                    console.warn('⚠️ Failed to get role from server, defaulting to customer');
+                }
+            } catch (error) {
+                console.warn('⚠️ Role API error, defaulting to customer:', error);
+            }
 
             await setDoc(doc(db, 'users', user.uid), {
                 uid: user.uid,
@@ -167,7 +214,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             await sendEmailVerification(user);
 
-            const idToken = await user.getIdToken();
             // Non-blocking session cookie
             fetch('/api/auth/session', {
                 method: 'POST',
@@ -192,9 +238,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const existingDoc = await getDoc(userDocRef);
             const existingRole = existingDoc.exists() ? existingDoc.data()?.role : null;
             const privilegedRoles = ['admin', 'superadmin', 'owner'];
-            const role = privilegedRoles.includes(existingRole)
-                ? existingRole // preserve existing privileged role
-                : (user.email === process.env.NEXT_PUBLIC_OWNER_EMAIL ? 'owner' : (existingRole || 'customer'));
+            
+            let role = existingRole || 'customer';
+            
+            // If no existing role, check server-side for owner email
+            if (!existingRole && user.email) {
+                const idToken = await user.getIdToken();
+                try {
+                    const roleResponse = await fetch('/api/user/get-role', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${idToken}`,
+                        },
+                        body: JSON.stringify({ uid: user.uid, email: user.email }),
+                    });
+                    
+                    if (roleResponse.ok) {
+                        const { role: serverRole } = await roleResponse.json();
+                        role = serverRole;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Role API error, using default:', error);
+                }
+            }
+            
+            // Preserve existing privileged roles
+            if (privilegedRoles.includes(existingRole)) {
+                role = existingRole;
+            }
 
             await setDoc(
                 userDocRef,
