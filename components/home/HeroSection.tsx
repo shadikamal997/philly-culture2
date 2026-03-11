@@ -5,6 +5,7 @@ import Hero from '@/components/ui/animated-shader-hero';
 export default function HeroSection() {
   return (
     <Hero
+      className="-mt-20"
       trustBadge={{
         text: "Trusted by 5,000+ food lovers",
         icons: ["🍕", "🥖", "🧀"]
