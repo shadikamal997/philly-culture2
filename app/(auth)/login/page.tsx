@@ -20,6 +20,40 @@ export default function LoginPage() {
   const [isAdminLogin, setIsAdminLogin] = useState(false);
   const [sessionExpiredHandled, setSessionExpiredHandled] = useState(false);
   const hasRedirectedRef = useRef(false); // Prevent useEffect infinite loop
+  const redirectLoopCountRef = useRef(0); // Detect infinite redirect loops
+
+  // 🚨 CRITICAL: Detect and break infinite redirect loops
+  useEffect(() => {
+    // Check if we're in a redirect loop
+    if (redirect === '/admin' && !user) {
+      redirectLoopCountRef.current += 1;
+      
+      if (redirectLoopCountRef.current > 3) {
+        console.error('🚨 REDIRECT LOOP DETECTED! Force clearing all auth state...');
+        
+        // Clear ALL cookies
+        document.cookie.split(";").forEach((c) => {
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+        
+        // Clear storage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Force logout
+        logout().catch(() => {});
+        
+        // Reset counter
+        redirectLoopCountRef.current = 0;
+        hasRedirectedRef.current = false;
+        
+        // Show error
+        toast.error('Session expired. Please sign in again.', { duration: 5000 });
+      }
+    } else {
+      redirectLoopCountRef.current = 0; // Reset if not in loop
+    }
+  }, [redirect, user, logout]);
 
   // Handle session expiration
   useEffect(() => {
@@ -27,20 +61,23 @@ export default function LoginPage() {
       console.log('🔥 [LOGIN PAGE] Session expired - forcing logout');
       setSessionExpiredHandled(true);
       
-      // Force sign out to clear stale auth state
-      if (user) {
-        logout().catch(() => {
-          // Ignore logout errors
-        });
-      }
+      // Clear ALL cookies immediately
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
       
-      // Clear all cookies
-      document.cookie = '__session=; path=/; max-age=0';
-      document.cookie = 'role=; path=/; max-age=0';
+      // Clear storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Force sign out to clear stale auth state
+      logout().catch(() => {
+        // Ignore logout errors
+      });
       
       toast.error('Your session expired. Please sign in again.');
     }
-  }, [errorParam, sessionExpiredHandled, user, logout]);
+  }, [errorParam, sessionExpiredHandled, logout]);
 
   // Auto-redirect if already authenticated
   // IMPORTANT: Only redirect if NOT actively logging in (prevents race condition)
@@ -54,10 +91,8 @@ export default function LoginPage() {
     if (user || userData || authLoading) {
       console.log('🔵 [LOGIN PAGE] useEffect triggered', { 
         authLoading, 
-        hasUser: !!user, 
-        hasUserData: !!userData,
-        role: userData?.role,
-        errorParam 
+        hasUser: !,
+        redirect 
       });
     }
     
@@ -66,10 +101,17 @@ export default function LoginPage() {
       return;
     }
     
-    // 🔥 FIX: Don't auto-redirect if there's an error param (like session_expired)
-    // This prevents the infinite loop when admin layout rejects expired tokens
+    // 🔥 CRITICAL: NEVER auto-redirect if there's an error param
+    // This breaks the infinite loop when admin layout rejects expired tokens
     if (errorParam) {
-      console.log('⚠️  [LOGIN PAGE] Error param detected, blocking auto-redirect:', errorParam);
+      console.log('⚠️  [LOGIN PAGE] Error param detected, BLOCKING auto-redirect:', errorParam);
+      hasRedirectedRef.current = false; // Allow manual login
+      return;
+    }
+    
+    // 🔥 CRITICAL: If redirect=/admin but no user, we're in a loop - STOP
+    if (redirect === '/admin' && (!user || !userData)) {
+      console.log('⚠️  [LOGIN PAGE] Redirect to admin without valid user - BLOCKING to prevent loop');
       return;
     }
     
@@ -95,6 +137,9 @@ export default function LoginPage() {
       window.location.replace('/admin');
     } else {
       console.log('🚀 [LOGIN PAGE] Redirecting to', redirect !== '/login' ? redirect : '/dashboard');
+      window.location.replace(redirect !== '/login' ? redirect : '/dashboard');
+    }
+  }, [user, userData, authLoading, errorParam, redirectg to', redirect !== '/login' ? redirect : '/dashboard');
       window.location.replace(redirect !== '/login' ? redirect : '/dashboard');
     }
   }, [user, userData, authLoading, errorParam]);
