@@ -1,5 +1,4 @@
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
+import { ConditionalLayout } from "@/components/layout/ConditionalLayout";
 import { CoreProviders } from "@/components/layout/CoreProviders";
 import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 import "./globals.css";
@@ -19,9 +18,9 @@ export default function RootLayout({
       <body className="bg-white text-black">
         <ErrorBoundary>
           <CoreProviders>
-            <Navbar />
-            <div className="pt-20 min-h-screen">{children}</div>
-            <Footer />
+            <ConditionalLayout>
+              {children}
+            </ConditionalLayout>
           </CoreProviders>
         </ErrorBoundary>
       </body>
