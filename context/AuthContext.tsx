@@ -66,6 +66,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             clearTimeout(loadingTimeout); // Cancel timeout since auth fired
             console.log('🔵 Auth state changed:', currentUser ? `User: ${currentUser.email}` : 'No user');
+            
+            // 🔒 CRITICAL: Block unverified users from setting state
+            // This prevents the login redirect race condition where onAuthStateChanged
+            // fires BEFORE signIn()'s emailVerified check completes
+            if (currentUser && !currentUser.emailVerified) {
+                console.warn('⚠️  Blocking unverified user from auth state');
+                setUser(null);
+                setUserData(null);
+                setLoading(false);
+                return; // Don't process unverified users
+            }
+
             setUser(currentUser);
 
             if (currentUser) {
