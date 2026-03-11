@@ -12,12 +12,34 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/dashboard";
   const errorParam = searchParams.get("error"); // Check for error param
-  const { signIn, signInWithGoogle, userData, user, loading: authLoading } = useAuth();
+  const { signIn, signInWithGoogle, userData, user, loading: authLoading, logout } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isAdminLogin, setIsAdminLogin] = useState(false);
+  const [sessionExpiredHandled, setSessionExpiredHandled] = useState(false);
+
+  // Handle session expiration
+  useEffect(() => {
+    if (errorParam === 'session_expired' && !sessionExpiredHandled) {
+      console.log('🔥 [LOGIN PAGE] Session expired - forcing logout');
+      setSessionExpiredHandled(true);
+      
+      // Force sign out to clear stale auth state
+      if (user) {
+        logout().catch(() => {
+          // Ignore logout errors
+        });
+      }
+      
+      // Clear all cookies
+      document.cookie = '__session=; path=/; max-age=0';
+      document.cookie = 'role=; path=/; max-age=0';
+      
+      toast.error('Your session expired. Please sign in again.');
+    }
+  }, [errorParam, sessionExpiredHandled, user, logout]);
 
   // Auto-redirect if already authenticated
   // IMPORTANT: Only redirect if NOT actively logging in (prevents race condition)
@@ -39,11 +61,7 @@ export default function LoginPage() {
     // 🔥 FIX: Don't auto-redirect if there's an error param (like session_expired)
     // This prevents the infinite loop when admin layout rejects expired tokens
     if (errorParam) {
-      console.log('⚠️  [LOGIN PAGE] Error param detected, forcing fresh login:', errorParam);
-      // Clear the error from URL but don't redirect
-      if (errorParam === 'session_expired') {
-        toast.error('Your session expired. Please sign in again.');
-      }
+      console.log('⚠️  [LOGIN PAGE] Error param detected, blocking auto-redirect:', errorParam);
       return;
     }
     
@@ -75,6 +93,57 @@ export default function LoginPage() {
       window.location.replace(redirect !== '/login' ? redirect : '/dashboard');
     }
   }, [user, userData, authLoading, loading, redirect]);
+
+  const handleClearAndLogin = async () => {
+    console.log('🧹 [LOGIN PAGE] Clearing ALL auth data before login...');
+    setLoading(true);
+    
+    try {
+      // 1. Force logout
+      await logout();
+      
+      // 2. Clear all cookies
+      const cookies = document.cookie.split(";");
+      for (const cookie of cookies) {
+        const eqPos = cookie.indexOf("=");
+        const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+      }
+      
+      // 3. Clear storage
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // 4. Clear server session
+      await fetch('/api/auth/session', { method: 'DELETE' }).catch(() => {});
+      
+      toast.success('All auth data cleared. Now signing in fresh...');
+      
+      // 5. Wait a moment for cleanup to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 6. Now perform fresh login
+      console.log('🔵 [LOGIN PAGE] Starting fresh login...');
+      await signIn(email, password);
+      console.log('✅ [LOGIN PAGE] Fresh login completed');
+      toast.success('Signing in...');
+    } catch (err: any) {
+      console.error('❌ [LOGIN PAGE] Clear & login failed:', err);
+      
+      if (err.message?.includes('verify your email')) {
+        toast.error(err.message, { duration: 6000 });
+      } else if (err.message?.includes('invalid-credential') || err.message?.includes('wrong-password')) {
+        toast.error('Invalid email or password');
+      } else if (err.message?.includes('too-many-requests')) {
+        toast.error('Too many login attempts. Please wait a few minutes.');
+      } else if (err.message?.includes('user-not-found')) {
+        toast.error('No account found with this email');
+      } else {
+        toast.error(err.message || "Failed to sign in");
+      }
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,6 +292,20 @@ export default function LoginPage() {
                     {isAdminLogin ? "Sign in to Admin Panel" : "Sign In"}
                   </>
                 )}
+              </button>
+
+              {/* Clear & Login Button - for account-specific issues */}
+              <button
+                type="button"
+                onClick={handleClearAndLogin}
+                className="w-full py-2 px-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={loading || !email || !password}
+                title="Use this if login keeps looping"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Clear Cache & Login
               </button>
             </form>
 

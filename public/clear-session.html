@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Session - Philly Culture</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 100px auto;
+            padding: 20px;
+            background: #0f0f0f;
+            color: white;
+        }
+        .container {
+            background: #1a1a1a;
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid #ef4444;
+        }
+        h1 { color: #ef4444; margin: 0 0 20px 0; }
+        button {
+            background: linear-gradient(to right, #ef4444, #f97316);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            margin: 10px 0;
+        }
+        button:hover { opacity: 0.9; }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            background: #262626;
+        }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .info { color: #60a5fa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Clear All Sessions & Cookies</h1>
+        <p>This will completely clear all authentication data and force a fresh login.</p>
+        
+        <button onclick="clearEverything()">🔥 Clear Everything & Go to Login</button>
+        <button onclick="location.href='/login'" style="background: #3b82f6">Go to Login (without clearing)</button>
+        
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const status = document.getElementById('status');
+            const color = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            status.innerHTML += `<div class="${color}">${message}</div>`;
+        }
+
+        async function clearEverything() {
+            log('🧹 Starting cleanup...', 'info');
+            
+            // 1. Clear all cookies
+            document.cookie.split(";").forEach(function(c) { 
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+            });
+            log('✅ Cleared all document cookies', 'success');
+            
+            // 2. Clear localStorage
+            localStorage.clear();
+            log('✅ Cleared localStorage', 'success');
+            
+            // 3. Clear sessionStorage
+            sessionStorage.clear();
+            log('✅ Cleared sessionStorage', 'success');
+            
+            // 4. Clear cache storage
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(name => caches.delete(name)));
+                log('✅ Cleared cache storage', 'success');
+            }
+            
+            // 5. Call logout API
+            try {
+                await fetch('/api/auth/session', { method: 'DELETE' });
+                log('✅ Called logout API', 'success');
+            } catch (e) {
+                log('⚠️  Logout API call failed (non-critical)', 'error');
+            }
+            
+            // 6. Clear IndexedDB
+            if ('indexedDB' in window) {
+                const dbs = await indexedDB.databases();
+                dbs.forEach(db => {
+                    if (db.name) indexedDB.deleteDatabase(db.name);
+                });
+                log('✅ Cleared IndexedDB', 'success');
+            }
+            
+            log('🎉 All clear! Redirecting to login in 2 seconds...', 'success');
+            
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 2000);
+        }
+        
+        // Show current cookies
+        log('Current cookies: ' + (document.cookie || 'none'), 'info');
+    </script>
+</body>
+</html>
