@@ -71,7 +71,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // This prevents the login redirect race condition where onAuthStateChanged
             // fires BEFORE signIn()'s emailVerified check completes
             if (currentUser && !currentUser.emailVerified) {
-                console.warn('⚠️  Blocking unverified user from auth state');
+                console.error('🚫 [AUTH CONTEXT] EMAIL NOT VERIFIED!', {
+                    email: currentUser.email,
+                    emailVerified: currentUser.emailVerified,
+                    uid: currentUser.uid
+                });
+                console.error('🚫 This will cause an infinite loop! User must verify email first.');
+                
+                // Sign out the unverified user to stop the loop
+                await firebaseSignOut(auth);
                 setUser(null);
                 setUserData(null);
                 setLoading(false);
@@ -81,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(currentUser);
 
             if (currentUser) {
+                console.log('✅ [AUTH CONTEXT] User email is verified:', currentUser.email);
                 
                 try {
                     const docRef = doc(db, 'users', currentUser.uid);
@@ -117,8 +126,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             document.cookie = `role=${data.role}; path=/; max-age=2592000`;
                         }
                     } else {
-                        console.warn('⚠️  User document not found in Firestore');
-                        setUserData(null);
+                        console.error('🚫 [AUTH CONTEXT] USER DOCUMENT DOES NOT EXIST IN FIRESTORE!', {
+                            uid: currentUser.uid,
+                            email: currentUser.email
+                        });
+                        console.error('🚫 This will cause redirect issues! Creating user document...');
+                        
+                        // Create missing user document
+                        const newUserData = {
+                            email: currentUser.email,
+                            name: currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
+                            role: 'owner', // Default to owner for now
+                            createdAt: new Date().toISOString(),
+                        };
+                        
+                        await setDoc(docRef, newUserData);
+                        setUserData(newUserData);
+                        console.log('✅ [AUTH CONTEXT] Created missing user document with role: owner');
                     }
                 } catch (error) {
                     console.error("❌ Failed to fetch user data after retries:", error);

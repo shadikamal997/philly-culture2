@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
@@ -19,6 +19,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [isAdminLogin, setIsAdminLogin] = useState(false);
   const [sessionExpiredHandled, setSessionExpiredHandled] = useState(false);
+  const hasRedirectedRef = useRef(false); // Prevent useEffect infinite loop
 
   // Handle session expiration
   useEffect(() => {
@@ -44,6 +45,11 @@ export default function LoginPage() {
   // Auto-redirect if already authenticated
   // IMPORTANT: Only redirect if NOT actively logging in (prevents race condition)
   useEffect(() => {
+    // 🔥 CRITICAL FIX: Prevent infinite re-renders
+    if (hasRedirectedRef.current) {
+      return; // Already redirected, don't run again
+    }
+    
     console.log('🔵 [LOGIN PAGE] useEffect triggered', { 
       authLoading, 
       loading, 
@@ -79,6 +85,9 @@ export default function LoginPage() {
       console.log('🍪 [LOGIN PAGE] Role cookie set:', role);
     }
 
+    // Mark that we're about to redirect (prevents re-running)
+    hasRedirectedRef.current = true;
+    
     // Clear the loading state since onAuthStateChanged has fired
     if (loading) {
       console.log('🔄 [LOGIN PAGE] Clearing loading state');
@@ -92,7 +101,7 @@ export default function LoginPage() {
       console.log('🚀 [LOGIN PAGE] Redirecting to', redirect !== '/login' ? redirect : '/dashboard');
       window.location.replace(redirect !== '/login' ? redirect : '/dashboard');
     }
-  }, [user, userData, authLoading, loading, redirect]);
+  }, [user, userData, authLoading, loading, errorParam]);
 
   const handleClearAndLogin = async () => {
     console.log('🧹 [LOGIN PAGE] Clearing ALL auth data before login...');
