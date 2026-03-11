@@ -84,8 +84,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 
                 try {
                     const docRef = doc(db, 'users', currentUser.uid);
-                    const docSnap = await getDoc(docRef);
-                    if (docSnap.exists()) {
+                    
+                    // 🔥 FIX: Retry logic for Firestore permissions race condition
+                    // Sometimes Firestore SDK doesn't have auth token yet when onAuthStateChanged fires
+                    let docSnap;
+                    let retries = 0;
+                    const maxRetries = 3;
+                    
+                    while (retries < maxRetries) {
+                        try {
+                            console.log(`🔄 [AUTH CONTEXT] Fetching user data (attempt ${retries + 1}/${maxRetries})...`);
+                            docSnap = await getDoc(docRef);
+                            console.log('✅ [AUTH CONTEXT] User document fetched successfully');
+                            break; // Success!
+                        } catch (error: any) {
+                            if (error.code === 'permission-denied' && retries < maxRetries - 1) {
+                                console.warn(`⚠️  [AUTH CONTEXT] Permission denied, retrying in ${500 * (retries + 1)}ms...`);
+                                await new Promise(resolve => setTimeout(resolve, 500 * (retries + 1)));
+                                retries++;
+                            } else {
+                                throw error; // Give up
+                            }
+                        }
+                    }
+                    
+                    if (docSnap && docSnap.exists()) {
                         const data = docSnap.data();
                         setUserData(data);
                         console.log('✅ User data loaded:', { email: data.email, role: data.role });
@@ -98,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         setUserData(null);
                     }
                 } catch (error) {
-                    console.error("❌ Failed to fetch user data", error);
+                    console.error("❌ Failed to fetch user data after retries:", error);
                     setUserData(null);
                 }
             } else {
