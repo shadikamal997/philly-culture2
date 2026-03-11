@@ -50,14 +50,16 @@ export default function LoginPage() {
       return; // Already redirected, don't run again
     }
     
-    console.log('🔵 [LOGIN PAGE] useEffect triggered', { 
-      authLoading, 
-      loading, 
-      hasUser: !!user, 
-      hasUserData: !!userData,
-      role: userData?.role,
-      errorParam 
-    });
+    // Only log if we have something meaningful to process
+    if (user || userData || authLoading) {
+      console.log('🔵 [LOGIN PAGE] useEffect triggered', { 
+        authLoading, 
+        hasUser: !!user, 
+        hasUserData: !!userData,
+        role: userData?.role,
+        errorParam 
+      });
+    }
     
     if (authLoading) {
       console.log('⏸️  [LOGIN PAGE] Auth still loading, waiting...');
@@ -72,8 +74,7 @@ export default function LoginPage() {
     }
     
     if (!user || !userData) {
-      console.log('⏸️  [LOGIN PAGE] No user/userData, not redirecting');
-      return;
+      return; // Silently skip if no user - don't log spam
     }
 
     // User is authenticated — set role cookie and redirect based on role
@@ -87,12 +88,7 @@ export default function LoginPage() {
 
     // Mark that we're about to redirect (prevents re-running)
     hasRedirectedRef.current = true;
-    
-    // Clear the loading state since onAuthStateChanged has fired
-    if (loading) {
-      console.log('🔄 [LOGIN PAGE] Clearing loading state');
-      setLoading(false);
-    }
+    setLoading(false); // Clear loading state
 
     if (role === 'admin' || role === 'superadmin' || role === 'owner') {
       console.log('🚀 [LOGIN PAGE] Redirecting to /admin');
@@ -101,7 +97,7 @@ export default function LoginPage() {
       console.log('🚀 [LOGIN PAGE] Redirecting to', redirect !== '/login' ? redirect : '/dashboard');
       window.location.replace(redirect !== '/login' ? redirect : '/dashboard');
     }
-  }, [user, userData, authLoading, loading, errorParam]);
+  }, [user, userData, authLoading, errorParam]);
 
   const handleClearAndLogin = async () => {
     console.log('🧹 [LOGIN PAGE] Clearing ALL auth data before login...');
