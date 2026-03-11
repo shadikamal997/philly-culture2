@@ -21,8 +21,10 @@ export default function LoginPage() {
   const [isAdminLogin, setIsAdminLogin] = useState(false);
 
   // Auto-redirect if already authenticated
+  // IMPORTANT: Only redirect if NOT actively logging in (prevents race condition)
   useEffect(() => {
     if (authLoading) return; // Still checking auth state
+    if (loading) return; // 🔥 FIX: Don't auto-redirect during active login process
     if (!user || !userData) return; // Not authenticated
 
     // User is authenticated — redirect based on role
@@ -33,7 +35,7 @@ export default function LoginPage() {
       // Honour any ?redirect= param, otherwise go to dashboard
       window.location.replace(redirect !== '/login' ? redirect : '/dashboard');
     }
-  }, [user, userData, authLoading, redirect]);
+  }, [user, userData, authLoading, loading, redirect]);
 
   const getUserRole = async (): Promise<string | null> => {
     try {
