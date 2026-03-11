@@ -108,26 +108,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log('🔵 Starting sign in process...');
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const idToken = await userCredential.user.getIdToken();
-            
-            console.log('🔵 Creating session cookie...');
-            const response = await fetch('/api/auth/session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idToken }),
-            });
 
-            if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
-                if (response.status === 429) {
-                    throw new Error(data.error || 'Too many login attempts. Please wait a few minutes.');
+            // Try to create a server-side session cookie.
+            // If this fails for any reason, we still continue — Firebase client
+            // auth is valid and the role cookie (set in onAuthStateChanged) will
+            // handle middleware access.
+            try {
+                const response = await fetch('/api/auth/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idToken }),
+                });
+                if (response.ok) {
+                    console.log('✅ Session cookie created successfully');
+                } else {
+                    const data = await response.json().catch(() => ({}));
+                    // 429 = rate limited — this IS a real error the user should see
+                    if (response.status === 429) {
+                        throw new Error(data.error || 'Too many login attempts. Please wait a few minutes.');
+                    }
+                    // Other failures: log but don't block the user
+                    console.warn('⚠️ Session cookie creation failed (non-blocking):', data.error);
                 }
-                throw new Error(data.error || 'Failed to create session. Please try again.');
+            } catch (sessionErr: any) {
+                // Re-throw rate-limit errors
+                if (sessionErr.message?.includes('Too many') || sessionErr.message?.includes('wait')) {
+                    throw sessionErr;
+                }
+                console.warn('⚠️ Session API error (non-blocking):', sessionErr.message);
             }
-            
-            console.log('✅ Session created successfully');
+
+            console.log('✅ Sign in complete');
         } catch (error: any) {
             console.error('❌ Sign in error:', error);
-            // Re-throw the original error message (don't wrap it again)
             throw error;
         }
     };
@@ -154,15 +167,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await sendEmailVerification(user);
 
             const idToken = await user.getIdToken();
-            const response = await fetch('/api/auth/session', {
+            // Non-blocking session cookie
+            fetch('/api/auth/session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ idToken }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to create session');
-            }
+            }).catch(e => console.warn('⚠️ Session cookie failed (non-blocking):', e));
         } catch (error: any) {
             console.error('Sign up error:', error);
             throw new Error(error.message || 'Failed to create account');
@@ -200,15 +210,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             );
 
             const idToken = await user.getIdToken();
-            const response = await fetch('/api/auth/session', {
+            // Non-blocking session cookie; role cookie covers middleware
+            fetch('/api/auth/session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ idToken }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to create session');
-            }
+            }).catch(e => console.warn('⚠️ Session cookie failed (non-blocking):', e));
         } catch (error: any) {
             console.error('Google sign in error:', error);
             throw new Error(error.message || 'Failed to sign in with Google');
