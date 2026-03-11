@@ -85,8 +85,8 @@ export default function LoginPage() {
       console.error("Login error:", err);
       
       // Better error messages for common issues
-      if (err.message?.includes('email') && err.message?.includes('verif')) {
-        toast.error('Please verify your email address before signing in. Check your inbox.');
+      if (err.message?.includes('verify your email')) {
+        toast.error(err.message, { duration: 6000 }); // Longer duration for verification message
       } else if (err.message?.includes('invalid-credential') || err.message?.includes('wrong-password')) {
         toast.error('Invalid email or password');
       } else if (err.message?.includes('too-many-requests')) {

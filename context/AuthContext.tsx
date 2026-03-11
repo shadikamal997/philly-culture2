@@ -66,32 +66,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             clearTimeout(loadingTimeout); // Cancel timeout since auth fired
             console.log('🔵 Auth state changed:', currentUser ? `User: ${currentUser.email}` : 'No user');
-            
+            setUser(currentUser);
+
             if (currentUser) {
-                // 🔒 SECURITY: Enforce email verification
-                if (!currentUser.emailVerified) {
-                    console.warn('⚠️  Email not verified - blocking access');
-                    setUser(null);
-                    setUserData(null);
-                    setLoading(false);
-                    
-                    // Send verification email if not already sent recently
-                    try {
-                        await sendEmailVerification(currentUser);
-                        console.log('📧 Verification email sent');
-                    } catch (error: any) {
-                        // Ignore error if email was sent recently
-                        if (!error.message?.includes('too-many-requests')) {
-                            console.error('Failed to send verification email:', error);
-                        }
-                    }
-                    
-                    // Sign out unverified user
-                    await firebaseSignOut(auth);
-                    return;
-                }
-                
-                setUser(currentUser);
                 
                 try {
                     const docRef = doc(db, 'users', currentUser.uid);
@@ -132,6 +109,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             console.log('🔵 Starting sign in process...');
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            
+            // 🔒 SECURITY: Check email verification
+            if (!userCredential.user.emailVerified) {
+                console.warn('⚠️  Email not verified');
+                await firebaseSignOut(auth);
+                throw new Error('Please verify your email address before signing in. Check your inbox for the verification link.');
+            }
+            
             const idToken = await userCredential.user.getIdToken();
 
             // Fire session cookie creation with a 5s timeout.
@@ -231,6 +216,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const provider = new GoogleAuthProvider();
             const userCredential = await signInWithPopup(auth, provider);
             const user = userCredential.user;
+            
+            // Google accounts are pre-verified, skip check
+            // (Google OAuth provides verified email addresses)
 
             const userDocRef = doc(db, 'users', user.uid);
             
