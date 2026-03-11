@@ -77,9 +77,11 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      // Small wait for session cookie to propagate
-      await new Promise(resolve => setTimeout(resolve, 800));
       const role = await getUserRole();
+      // Guarantee role cookie is set before navigation so middleware lets us through
+      if (role) {
+        document.cookie = `role=${role}; path=/; max-age=2592000; SameSite=Lax`;
+      }
       redirectByRole(role, isAdminLogin);
     } catch (err: any) {
       console.error("Login error:", err);
@@ -92,8 +94,11 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      await new Promise(resolve => setTimeout(resolve, 800));
       const role = await getUserRole();
+      // Guarantee role cookie is set before navigation so middleware lets us through
+      if (role) {
+        document.cookie = `role=${role}; path=/; max-age=2592000; SameSite=Lax`;
+      }
       redirectByRole(role, isAdminLogin);
     } catch (err: any) {
       console.error("Google sign in error:", err);

@@ -109,29 +109,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const idToken = await userCredential.user.getIdToken();
 
-            // Try to create a server-side session cookie.
-            // If this fails for any reason, we still continue — Firebase client
-            // auth is valid and the role cookie (set in onAuthStateChanged) will
-            // handle middleware access.
+            // Fire session cookie creation with a 5s timeout.
+            // This is best-effort — the role cookie (set by onAuthStateChanged) handles
+            // middleware access if the session API is slow or fails.
+            const sessionPromise = fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken }),
+            });
+            const timeoutPromise = new Promise<Response>((_, reject) =>
+                setTimeout(() => reject(new Error('Session API timeout')), 5000)
+            );
+
             try {
-                const response = await fetch('/api/auth/session', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ idToken }),
-                });
+                const response = await Promise.race([sessionPromise, timeoutPromise]);
                 if (response.ok) {
-                    console.log('✅ Session cookie created successfully');
+                    console.log('✅ Session cookie created');
                 } else {
                     const data = await response.json().catch(() => ({}));
-                    // 429 = rate limited — this IS a real error the user should see
                     if (response.status === 429) {
                         throw new Error(data.error || 'Too many login attempts. Please wait a few minutes.');
                     }
-                    // Other failures: log but don't block the user
-                    console.warn('⚠️ Session cookie creation failed (non-blocking):', data.error);
+                    console.warn('⚠️ Session API non-ok (non-blocking):', response.status, data.error);
                 }
             } catch (sessionErr: any) {
-                // Re-throw rate-limit errors
                 if (sessionErr.message?.includes('Too many') || sessionErr.message?.includes('wait')) {
                     throw sessionErr;
                 }

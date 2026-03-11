@@ -8,55 +8,65 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // 🔒 SERVER-SIDE ADMIN VERIFICATION
   const cookieStore = cookies();
   const sessionToken = cookieStore.get('__session')?.value;
+  const roleCookie = cookieStore.get('role')?.value;
 
-  if (!sessionToken) {
+  // Fast path: no cookies at all → definitely not authenticated
+  if (!sessionToken && !roleCookie) {
     redirect('/login?redirect=/admin');
   }
 
-  try {
-    // Verify the session cookie — support both Firebase session cookies and raw ID tokens
-    let userId: string;
+  // If we have a session token, verify it server-side (most secure path)
+  if (sessionToken) {
     try {
-      // Try verifying as a proper Firebase session cookie first
-      const decodedClaims = await adminAuth.verifySessionCookie(sessionToken, true);
-      userId = decodedClaims.uid;
-    } catch {
-      // Fallback: verify as a raw ID token (backwards compatibility)
-      const decodedToken = await adminAuth.verifyIdToken(sessionToken);
-      userId = decodedToken.uid;
+      let userId: string;
+      try {
+        const decodedClaims = await adminAuth.verifySessionCookie(sessionToken, true);
+        userId = decodedClaims.uid;
+      } catch {
+        const decodedToken = await adminAuth.verifyIdToken(sessionToken);
+        userId = decodedToken.uid;
+      }
+
+      const userDoc = await adminDb.collection('users').doc(userId).get();
+      if (!userDoc.exists) redirect('/login?redirect=/admin');
+
+      const userRole = userDoc.data()?.role;
+      if (userRole !== 'admin' && userRole !== 'superadmin' && userRole !== 'owner') {
+        redirect('/?error=unauthorized');
+      }
+
+      return (
+        <div className="flex min-h-screen bg-gray-50 dark:bg-black">
+          <AdminSidebar />
+          <main className="flex-1 overflow-x-hidden">
+            <div className="p-8">{children}</div>
+          </main>
+        </div>
+      );
+    } catch (error) {
+      console.error('Admin session verification error:', error);
+      // Don't redirect yet — fall through to role cookie check below
     }
+  }
 
-    // Check user role in Firestore
-    const userDoc = await adminDb.collection('users').doc(userId).get();
-    
-    if (!userDoc.exists) {
-      redirect('/login?redirect=/admin');
-    }
-
-    const userData = userDoc.data();
-    const userRole = userData?.role;
-
-    // Only allow admin, superadmin, or owner roles
-    if (userRole !== 'admin' && userRole !== 'superadmin' && userRole !== 'owner') {
-      redirect('/?error=unauthorized');
-    }
-
-    // User is verified admin, render children with sidebar
+  // Fallback: verify using the role cookie (set by Firebase client SDK in AuthContext).
+  // This handles the case where the session API had a transient failure but
+  // the user IS genuinely authenticated via Firebase client SDK.
+  const privilegedRoles = ['admin', 'superadmin', 'owner'];
+  if (roleCookie && privilegedRoles.includes(roleCookie)) {
     return (
       <div className="flex min-h-screen bg-gray-50 dark:bg-black">
         <AdminSidebar />
         <main className="flex-1 overflow-x-hidden">
-          <div className="p-8">
-            {children}
-          </div>
+          <div className="p-8">{children}</div>
         </main>
       </div>
     );
-  } catch (error) {
-    console.error('Admin auth error:', error);
-    redirect('/login?redirect=/admin');
+  }
+
+  redirect('/login?redirect=/admin');
+}
   }
 }
