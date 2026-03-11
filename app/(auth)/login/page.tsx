@@ -5,16 +5,19 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import toast, { Toaster } from "react-hot-toast";
+import { db } from "@/firebase/firebaseClient";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/dashboard";
-  const { signIn, signInWithGoogle, userData } = useAuth();
+  const { signIn, signInWithGoogle, userData, user } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isAdminLogin, setIsAdminLogin] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,17 +25,35 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      toast.success("Welcome back!");
+      
+      // Wait for auth state to be established
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Fetch user role from Firestore
+      const currentUser = (await import("@/firebase/firebaseClient")).auth.currentUser;
+      if (!currentUser) {
+        throw new Error("Authentication failed");
+      }
 
-      // Wait for session to be established and userData to load
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Check if user is owner by email from the form input
-      const isOwner = email === process.env.NEXT_PUBLIC_OWNER_EMAIL;
-      const redirectUrl = isOwner ? '/admin' : (redirect !== '/dashboard' ? redirect : '/dashboard');
-      
-      // Use window.location for full page reload to ensure auth state is fresh
-      window.location.href = redirectUrl;
+      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+      const userRole = userDoc.data()?.role;
+
+      if (isAdminLogin) {
+        // Admin login requested
+        if (userRole === 'admin' || userRole === 'superadmin' || userRole === 'owner') {
+          toast.success("Welcome to Admin Panel!");
+          window.location.href = '/admin';
+        } else {
+          toast.error("Access denied. Admin privileges required.");
+          setLoading(false);
+          return;
+        }
+      } else {
+        // Regular user login
+        toast.success("Welcome back!");
+        const redirectUrl = redirect !== '/dashboard' ? redirect : '/dashboard';
+        window.location.href = redirectUrl;
+      }
     } catch (err: any) {
       console.error("Login error:", err);
       toast.error(err.message || "Failed to sign in");
@@ -44,16 +65,35 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      toast.success("Welcome back!");
+      
+      // Wait for auth state
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Fetch user role from Firestore
+      const currentUser = (await import("@/firebase/firebaseClient")).auth.currentUser;
+      if (!currentUser) {
+        throw new Error("Authentication failed");
+      }
 
-      // Wait for session to be established
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Default redirect - userData will be checked on the destination page
-      const redirectUrl = redirect !== '/dashboard' ? redirect : '/dashboard';
-      
-      // Use window.location for full page reload to ensure auth state is fresh
-      window.location.href = redirectUrl;
+      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+      const userRole = userDoc.data()?.role;
+
+      if (isAdminLogin) {
+        // Admin login requested
+        if (userRole === 'admin' || userRole === 'superadmin' || userRole === 'owner') {
+          toast.success("Welcome to Admin Panel!");
+          window.location.href = '/admin';
+        } else {
+          toast.error("Access denied. Admin privileges required.");
+          setLoading(false);
+          return;
+        }
+      } else {
+        // Regular user login
+        toast.success("Welcome back!");
+        const redirectUrl = redirect !== '/dashboard' ? redirect : '/dashboard';
+        window.location.href = redirectUrl;
+      }
     } catch (err: any) {
       console.error("Google sign in error:", err);
       toast.error(err.message || "Failed to sign in with Google");
@@ -116,12 +156,43 @@ export default function LoginPage() {
                 />
               </div>
 
+              {/* Admin Login Toggle */}
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/10 dark:to-orange-900/10 border border-red-200 dark:border-red-800">
+                <input
+                  type="checkbox"
+                  id="adminLogin"
+                  checked={isAdminLogin}
+                  onChange={(e) => setIsAdminLogin(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  disabled={loading}
+                />
+                <label htmlFor="adminLogin" className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  Sign in as Admin
+                </label>
+              </div>
+
               <button
                 type="submit"
-                className="w-full py-3 px-4 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-semibold rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                className={`w-full py-3 px-4 ${
+                  isAdminLogin 
+                    ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700' 
+                    : 'bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700'
+                } text-white font-semibold rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2`}
                 disabled={loading}
               >
-                {loading ? "Signing in..." : "Sign In"}
+                {loading ? "Signing in..." : (
+                  <>
+                    {isAdminLogin && (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                    )}
+                    {isAdminLogin ? "Sign in to Admin Panel" : "Sign In"}
+                  </>
+                )}
               </button>
             </form>
 

@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 interface OrderEmailData {
   recipientEmail: string;
@@ -55,6 +55,10 @@ export class EmailService {
   private adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
 
   async sendOrderConfirmation(data: OrderEmailData): Promise<void> {
+    if (!resend) {
+      console.warn('Email service not configured - skipping order confirmation email');
+      return;
+    }
     try {
       await resend.emails.send({
         from: this.fromEmail,
@@ -69,6 +73,10 @@ export class EmailService {
   }
 
   async sendShippingUpdate(data: ShippingUpdateData): Promise<void> {
+    if (!resend) {
+      console.warn('Email service not configured - skipping shipping update email');
+      return;
+    }
     try {
       await resend.emails.send({
         from: this.fromEmail,
@@ -83,6 +91,10 @@ export class EmailService {
   }
 
   async sendContactFormNotification(data: ContactFormData): Promise<void> {
+    if (!resend) {
+      console.warn('Email service not configured - skipping contact form notification');
+      return;
+    }
     try {
       await resend.emails.send({
         from: this.fromEmail,
@@ -98,6 +110,10 @@ export class EmailService {
   }
 
   async sendEnrollmentConfirmation(data: EnrollmentEmailData): Promise<void> {
+    if (!resend) {
+      console.warn('Email service not configured - skipping enrollment confirmation email');
+      return;
+    }
     try {
       await resend.emails.send({
         from: this.fromEmail,
