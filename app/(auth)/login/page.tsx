@@ -5,9 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import toast, { Toaster } from "react-hot-toast";
-import { db } from "@/firebase/firebaseClient";
-import { doc, getDoc } from "firebase/firestore";
-import { isPrivilegedRole } from "@/lib/constants/roles";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,11 +21,17 @@ export default function LoginPage() {
   // IMPORTANT: Only redirect if NOT actively logging in (prevents race condition)
   useEffect(() => {
     if (authLoading) return; // Still checking auth state
-    if (loading) return; // 🔥 FIX: Don't auto-redirect during active login process
     if (!user || !userData) return; // Not authenticated
 
-    // User is authenticated — redirect based on role
+    // User is authenticated — set role cookie and redirect based on role
     const role = userData.role;
+    if (role) {
+      document.cookie = `role=${role}; path=/; max-age=2592000; SameSite=Lax`;
+    }
+
+    // Clear the loading state since onAuthStateChanged has fired
+    if (loading) setLoading(false);
+
     if (role === 'admin' || role === 'superadmin' || role === 'owner') {
       window.location.replace('/admin');
     } else {
@@ -37,52 +40,16 @@ export default function LoginPage() {
     }
   }, [user, userData, authLoading, loading, redirect]);
 
-  const getUserRole = async (): Promise<string | null> => {
-    try {
-      const { auth } = await import("@/firebase/firebaseClient");
-      const currentUser = auth.currentUser;
-      if (!currentUser) return null;
-      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-      return userDoc.data()?.role ?? null;
-    } catch {
-      return null;
-    }
-  };
-
-  const redirectByRole = (role: string | null, wantsAdmin: boolean) => {
-    if (wantsAdmin && !isPrivilegedRole(role)) {
-      // Explicitly requested admin but role doesn't qualify
-      toast.error(
-        role
-          ? `Access denied. Your role is "${role}", not admin.`
-          : "Access denied. Admin account not found in the system."
-      );
-      setLoading(false);
-      return;
-    }
-
-    // Route admins/owners to /admin always, regardless of checkbox
-    if (isPrivilegedRole(role)) {
-      toast.success("Welcome to Admin Panel!");
-      window.location.href = '/admin';
-    } else {
-      toast.success("Welcome back!");
-      window.location.href = redirect !== '/dashboard' ? redirect : '/dashboard';
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       await signIn(email, password);
-      const role = await getUserRole();
-      // Guarantee role cookie is set before navigation so middleware lets us through
-      if (role) {
-        document.cookie = `role=${role}; path=/; max-age=2592000; SameSite=Lax`;
-      }
-      redirectByRole(role, isAdminLogin);
+      // Don't redirect here! Let the useEffect handle it after onAuthStateChanged fires
+      // and populates user/userData. This prevents race condition where getUserRole()
+      // returns null because auth.currentUser isn't set yet.
+      toast.success('Signing in...');
     } catch (err: any) {
       console.error("Login error:", err);
       
@@ -106,12 +73,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      const role = await getUserRole();
-      // Guarantee role cookie is set before navigation so middleware lets us through
-      if (role) {
-        document.cookie = `role=${role}; path=/; max-age=2592000; SameSite=Lax`;
-      }
-      redirectByRole(role, isAdminLogin);
+      // Don't redirect here! Let the useEffect handle it after onAuthStateChanged fires
+      toast.success('Signing in...');
     } catch (err: any) {
       console.error("Google sign in error:", err);
       toast.error(err.message || "Failed to sign in with Google");
