@@ -43,19 +43,25 @@ export default function LoginPage() {
     }
   };
 
+  const isPrivilegedRole = (role: string | null) =>
+    role === 'admin' || role === 'superadmin' || role === 'owner';
+
   const redirectByRole = (role: string | null, wantsAdmin: boolean) => {
-    if (wantsAdmin) {
-      if (role === 'admin' || role === 'superadmin' || role === 'owner') {
-        toast.success("Welcome to Admin Panel!");
-        window.location.href = '/admin';
-      } else {
-        toast.error(
-          role
-            ? `Access denied. Your role is "${role}", not admin.`
-            : "Access denied. Admin account not found in the system."
-        );
-        setLoading(false);
-      }
+    if (wantsAdmin && !isPrivilegedRole(role)) {
+      // Explicitly requested admin but role doesn't qualify
+      toast.error(
+        role
+          ? `Access denied. Your role is "${role}", not admin.`
+          : "Access denied. Admin account not found in the system."
+      );
+      setLoading(false);
+      return;
+    }
+
+    // Route admins/owners to /admin always, regardless of checkbox
+    if (isPrivilegedRole(role)) {
+      toast.success("Welcome to Admin Panel!");
+      window.location.href = '/admin';
     } else {
       toast.success("Welcome back!");
       window.location.href = redirect !== '/dashboard' ? redirect : '/dashboard';
