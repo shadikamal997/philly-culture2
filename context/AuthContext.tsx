@@ -143,6 +143,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const signIn = async (email: string, password: string) => {
         try {
             console.log('🔵 [AUTH CONTEXT] Starting sign in process for:', email);
+            
+            // 🔥 CRITICAL FIX: Clear ALL old cookies first to prevent expired token loops
+            document.cookie = '__session=; path=/; max-age=0';
+            document.cookie = 'role=; path=/; max-age=0';
+            console.log('🧹 [AUTH CONTEXT] Cleared old cookies');
+            
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             console.log('✅ [AUTH CONTEXT] Firebase authentication successful');
             
@@ -154,7 +160,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
             
             console.log('✅ [AUTH CONTEXT] Email is verified, continuing login...');
-            const idToken = await userCredential.user.getIdToken();
+            
+            // 🔥 CRITICAL: Get a FRESH ID token (force refresh to avoid expired tokens)
+            const idToken = await userCredential.user.getIdToken(true); // true = force refresh
+            console.log('✅ [AUTH CONTEXT] Fresh ID token obtained');
 
             // Fire session cookie creation with a 5s timeout.
             // This is best-effort — the role cookie (set by onAuthStateChanged) handles

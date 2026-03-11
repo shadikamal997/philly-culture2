@@ -11,6 +11,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/dashboard";
+  const errorParam = searchParams.get("error"); // Check for error param
   const { signIn, signInWithGoogle, userData, user, loading: authLoading } = useAuth();
   
   const [email, setEmail] = useState("");
@@ -26,13 +27,26 @@ export default function LoginPage() {
       loading, 
       hasUser: !!user, 
       hasUserData: !!userData,
-      role: userData?.role 
+      role: userData?.role,
+      errorParam 
     });
     
     if (authLoading) {
       console.log('⏸️  [LOGIN PAGE] Auth still loading, waiting...');
       return;
     }
+    
+    // 🔥 FIX: Don't auto-redirect if there's an error param (like session_expired)
+    // This prevents the infinite loop when admin layout rejects expired tokens
+    if (errorParam) {
+      console.log('⚠️  [LOGIN PAGE] Error param detected, forcing fresh login:', errorParam);
+      // Clear the error from URL but don't redirect
+      if (errorParam === 'session_expired') {
+        toast.error('Your session expired. Please sign in again.');
+      }
+      return;
+    }
+    
     if (!user || !userData) {
       console.log('⏸️  [LOGIN PAGE] No user/userData, not redirecting');
       return;
