@@ -19,10 +19,6 @@ export default function HeroSection() {
         primary: {
           text: "Explore Academy",
           href: "/programs"
-        },
-        secondary: {
-          text: "Shop Products",
-          href: "/shop"
         }
       }}
       stats={[
