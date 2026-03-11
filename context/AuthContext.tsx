@@ -119,16 +119,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const signIn = async (email: string, password: string) => {
         try {
-            console.log('🔵 Starting sign in process...');
+            console.log('🔵 [AUTH CONTEXT] Starting sign in process for:', email);
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            console.log('✅ [AUTH CONTEXT] Firebase authentication successful');
             
             // 🔒 SECURITY: Check email verification
             if (!userCredential.user.emailVerified) {
-                console.warn('⚠️  Email not verified');
+                console.error('❌ [AUTH CONTEXT] Email not verified - signing out immediately');
                 await firebaseSignOut(auth);
                 throw new Error('Please verify your email address before signing in. Check your inbox for the verification link.');
             }
             
+            console.log('✅ [AUTH CONTEXT] Email is verified, continuing login...');
             const idToken = await userCredential.user.getIdToken();
 
             // Fire session cookie creation with a 5s timeout.
@@ -146,24 +148,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             try {
                 const response = await Promise.race([sessionPromise, timeoutPromise]);
                 if (response.ok) {
-                    console.log('✅ Session cookie created');
+                    console.log('✅ [AUTH CONTEXT] Session cookie created');
                 } else {
                     const data = await response.json().catch(() => ({}));
                     if (response.status === 429) {
                         throw new Error(data.error || 'Too many login attempts. Please wait a few minutes.');
                     }
-                    console.warn('⚠️ Session API non-ok (non-blocking):', response.status, data.error);
+                    console.warn('⚠️ [AUTH CONTEXT] Session API non-ok (non-blocking):', response.status, data.error);
                 }
             } catch (sessionErr: any) {
                 if (sessionErr.message?.includes('Too many') || sessionErr.message?.includes('wait')) {
                     throw sessionErr;
                 }
-                console.warn('⚠️ Session API error (non-blocking):', sessionErr.message);
+                console.warn('⚠️ [AUTH CONTEXT] Session API error (non-blocking):', sessionErr.message);
             }
 
-            console.log('✅ Sign in complete');
+            console.log('✅ [AUTH CONTEXT] Sign in complete');
         } catch (error: any) {
-            console.error('❌ Sign in error:', error);
+            console.error('❌ [AUTH CONTEXT] Sign in error:', error);
             throw error;
         }
     };

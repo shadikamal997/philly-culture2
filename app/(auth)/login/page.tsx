@@ -20,37 +20,62 @@ export default function LoginPage() {
   // Auto-redirect if already authenticated
   // IMPORTANT: Only redirect if NOT actively logging in (prevents race condition)
   useEffect(() => {
-    if (authLoading) return; // Still checking auth state
-    if (!user || !userData) return; // Not authenticated
+    console.log('🔵 [LOGIN PAGE] useEffect triggered', { 
+      authLoading, 
+      loading, 
+      hasUser: !!user, 
+      hasUserData: !!userData,
+      role: userData?.role 
+    });
+    
+    if (authLoading) {
+      console.log('⏸️  [LOGIN PAGE] Auth still loading, waiting...');
+      return;
+    }
+    if (!user || !userData) {
+      console.log('⏸️  [LOGIN PAGE] No user/userData, not redirecting');
+      return;
+    }
 
     // User is authenticated — set role cookie and redirect based on role
     const role = userData.role;
+    console.log('✅ [LOGIN PAGE] User authenticated, role:', role);
+    
     if (role) {
       document.cookie = `role=${role}; path=/; max-age=2592000; SameSite=Lax`;
+      console.log('🍪 [LOGIN PAGE] Role cookie set:', role);
     }
 
     // Clear the loading state since onAuthStateChanged has fired
-    if (loading) setLoading(false);
+    if (loading) {
+      console.log('🔄 [LOGIN PAGE] Clearing loading state');
+      setLoading(false);
+    }
 
     if (role === 'admin' || role === 'superadmin' || role === 'owner') {
+      console.log('🚀 [LOGIN PAGE] Redirecting to /admin');
       window.location.replace('/admin');
     } else {
-      // Honour any ?redirect= param, otherwise go to dashboard
+      console.log('🚀 [LOGIN PAGE] Redirecting to', redirect !== '/login' ? redirect : '/dashboard');
       window.location.replace(redirect !== '/login' ? redirect : '/dashboard');
     }
   }, [user, userData, authLoading, loading, redirect]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔵 [LOGIN PAGE] Form submitted, signing in...');
     setLoading(true);
 
     try {
+      console.log('🔵 [LOGIN PAGE] Calling signIn()...');
       await signIn(email, password);
+      console.log('✅ [LOGIN PAGE] signIn() completed successfully');
       // Don't redirect here! Let the useEffect handle it after onAuthStateChanged fires
       // and populates user/userData. This prevents race condition where getUserRole()
       // returns null because auth.currentUser isn't set yet.
       toast.success('Signing in...');
     } catch (err: any) {
+      console.error('❌ [LOGIN PAGE] Sign in failed:', err);
       console.error("Login error:", err);
       
       // Better error messages for common issues
