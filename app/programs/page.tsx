@@ -1,4 +1,5 @@
-import { adminDb } from "@/firebase/firebaseAdmin";
+import { adminDb, adminAuth } from "@/firebase/firebaseAdmin";
+import { cookies } from "next/headers";
 import Link from "next/link";
 
 export const metadata = {
@@ -34,8 +35,28 @@ async function getAllPrograms() {
   }
 }
 
+async function checkIsAdmin() {
+  try {
+    const cookieStore = cookies();
+    const sessionToken = cookieStore.get('__session')?.value;
+
+    if (!sessionToken) return false;
+
+    const decodedToken = await adminAuth.verifyIdToken(sessionToken);
+    const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
+    
+    if (!userDoc.exists) return false;
+
+    const userData = userDoc.data();
+    return userData?.role === 'admin' || userData?.role === 'superadmin' || userData?.role === 'owner';
+  } catch (error) {
+    return false;
+  }
+}
+
 export default async function ProgramsPage() {
   const programs = await getAllPrograms();
+  const isAdmin = await checkIsAdmin();
 
   return (
     <main className="max-w-6xl mx-auto px-6 py-16">
@@ -95,12 +116,14 @@ export default async function ProgramsPage() {
       ) : (
         <div className="text-center py-12 border rounded-lg bg-gray-50">
           <p className="text-gray-600 mb-4">No programs available yet.</p>
-          <Link
-            href="/admin/programs/create"
-            className="text-red-600 hover:underline font-semibold"
-          >
-            Create your first program (Admin)
-          </Link>
+          {isAdmin && (
+            <Link
+              href="/admin/programs/create"
+              className="text-red-600 hover:underline font-semibold"
+            >
+              Create your first program (Admin)
+            </Link>
+          )}
         </div>
       )}
     </main>

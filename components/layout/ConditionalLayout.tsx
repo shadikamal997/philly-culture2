@@ -15,15 +15,15 @@ export function ConditionalLayout({ children }: { children: React.ReactNode }) {
                       pathname?.startsWith('/profile');
   const isAdmin = pathname?.startsWith('/admin');
   const isOwner = pathname?.startsWith('/owner');
-  const hideNavAndFooter = isDashboard || isAdmin || isOwner;
+  const hideFooter = isDashboard || isAdmin || isOwner;
 
   return (
     <>
-      {!hideNavAndFooter && <Navbar />}
-      <div className={hideNavAndFooter ? "min-h-screen" : "pt-20 min-h-screen"}>
+      <Navbar />
+      <div className="pt-20 min-h-screen">
         {children}
       </div>
-      {!hideNavAndFooter && <Footer />}
+      {!hideFooter && <Footer />}
     </>
   );
 }
