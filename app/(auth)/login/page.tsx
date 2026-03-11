@@ -54,11 +54,13 @@ export default function LoginPage() {
     }
 
     if (role === 'admin' || role === 'superadmin' || role === 'owner') {
-      console.log('🚀 [LOGIN PAGE] Redirecting to /admin');
-      window.location.replace('/admin');
+      console.log('🚀 [LOGIN PAGE] WOULD redirect to /admin (DISABLED FOR DEBUGGING)');
+      // TEMPORARILY DISABLED TO SEE DEBUG PANEL
+      // window.location.replace('/admin');
     } else {
-      console.log('🚀 [LOGIN PAGE] Redirecting to', redirect !== '/login' ? redirect : '/dashboard');
-      window.location.replace(redirect !== '/login' ? redirect : '/dashboard');
+      console.log('🚀 [LOGIN PAGE] WOULD redirect to', redirect !== '/login' ? redirect : '/dashboard', '(DISABLED FOR DEBUGGING)');
+      // TEMPORARILY DISABLED TO SEE DEBUG PANEL
+      // window.location.replace(redirect !== '/login' ? redirect : '/dashboard');
     }
   }, [user, userData, authLoading, loading, redirect]);
 
