@@ -56,7 +56,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         console.log('🔵 AuthContext: Setting up auth listener');
         
+        // Safety timeout: if Firebase never fires onAuthStateChanged within 8s,
+        // force loading to false so the app doesn't get stuck on a spinner
+        const loadingTimeout = setTimeout(() => {
+            console.warn('⚠️  Auth state timeout - forcing loading to false');
+            setLoading(false);
+        }, 8000);
+        
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            clearTimeout(loadingTimeout); // Cancel timeout since auth fired
             console.log('🔵 Auth state changed:', currentUser ? `User: ${currentUser.email}` : 'No user');
             setUser(currentUser);
 
@@ -89,6 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         return () => {
+            clearTimeout(loadingTimeout);
             console.log('🔵 AuthContext: Cleaning up auth listener');
             unsubscribe();
         };
@@ -108,13 +117,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to create session');
+                const data = await response.json().catch(() => ({}));
+                if (response.status === 429) {
+                    throw new Error(data.error || 'Too many login attempts. Please wait a few minutes.');
+                }
+                throw new Error(data.error || 'Failed to create session. Please try again.');
             }
             
             console.log('✅ Session created successfully');
         } catch (error: any) {
             console.error('❌ Sign in error:', error);
-            throw new Error(error.message || 'Failed to sign in');
+            // Re-throw the original error message (don't wrap it again)
+            throw error;
         }
     };
 

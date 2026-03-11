@@ -19,17 +19,25 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [isAdminLogin, setIsAdminLogin] = useState(false);
 
-  // Auto-redirect if already authenticated
+  // Auto-redirect if already authenticated — but only once to prevent redirect loops
   useEffect(() => {
     if (!authLoading && user && userData) {
+      // If we were sent here from /admin (redirect loop guard), don't auto-redirect again
+      const comingFromAdmin = redirect === '/admin' || redirect.startsWith('/admin/');
+      // Check if the session cookie exists before redirecting to protected routes
+      const hasSession = document.cookie.includes('__session');
+      if (!hasSession) {
+        // No session cookie - don't redirect, let user re-authenticate
+        return;
+      }
       const role = userData.role;
       if (role === 'admin' || role === 'superadmin' || role === 'owner') {
         window.location.href = '/admin';
-      } else {
+      } else if (!comingFromAdmin) {
         window.location.href = '/dashboard';
       }
     }
-  }, [user, userData, authLoading]);
+  }, [user, userData, authLoading, redirect]);
 
   const getUserRole = async (): Promise<string | null> => {
     try {

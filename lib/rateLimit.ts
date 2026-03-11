@@ -90,8 +90,8 @@ if (typeof setInterval !== 'undefined') {
  */
 export const RATE_LIMITS = {
   // Authentication endpoints
-  LOGIN: { limit: 5, window: 15 * 60 * 1000 }, // 5 per 15 minutes
-  REGISTER: { limit: 3, window: 60 * 60 * 1000 }, // 3 per hour
+  LOGIN: { limit: 20, window: 15 * 60 * 1000 }, // 20 per 15 minutes (was 5, too strict)
+  REGISTER: { limit: 10, window: 60 * 60 * 1000 }, // 10 per hour
   
   // API endpoints
   API_READ: { limit: 100, window: 60 * 1000 }, // 100 per minute

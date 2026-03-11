@@ -17,9 +17,17 @@ export default async function AdminLayout({
   }
 
   try {
-    // Verify Firebase token
-    const decodedToken = await adminAuth.verifyIdToken(sessionToken);
-    const userId = decodedToken.uid;
+    // Verify the session cookie — support both Firebase session cookies and raw ID tokens
+    let userId: string;
+    try {
+      // Try verifying as a proper Firebase session cookie first
+      const decodedClaims = await adminAuth.verifySessionCookie(sessionToken, true);
+      userId = decodedClaims.uid;
+    } catch {
+      // Fallback: verify as a raw ID token (backwards compatibility)
+      const decodedToken = await adminAuth.verifyIdToken(sessionToken);
+      userId = decodedToken.uid;
+    }
 
     // Check user role in Firestore
     const userDoc = await adminDb.collection('users').doc(userId).get();
