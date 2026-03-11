@@ -259,9 +259,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const signInWithGoogle = async () => {
         try {
+            console.log('🔵 [AUTH CONTEXT] Starting Google sign in...');
+            
+            // 🔥 CRITICAL FIX: Clear ALL old cookies first
+            document.cookie = '__session=; path=/; max-age=0';
+            document.cookie = 'role=; path=/; max-age=0';
+            console.log('🧹 [AUTH CONTEXT] Cleared old cookies');
+            
             const provider = new GoogleAuthProvider();
-            const userCredential = await signInWithPopup(auth, provider);
+            provider.setCustomParameters({
+                prompt: 'select_account' // Force account selection
+            });
+            
+            let userCredential;
+            try {
+                userCredential = await signInWithPopup(auth, provider);
+            } catch (popupError: any) {
+                // Handle popup-specific errors
+                if (popupError.code === 'auth/popup-closed-by-user') {
+                    throw new Error('Sign in cancelled. Please try again.');
+                } else if (popupError.code === 'auth/popup-blocked') {
+                    throw new Error('Popup blocked by browser. Please allow popups and try again.');
+                } else if (popupError.code === 'auth/cancelled-popup-request') {
+                    throw new Error('Another sign-in popup is already open.');
+                }
+                throw popupError; // Re-throw other errors
+            }
+            
             const user = userCredential.user;
+            console.log('✅ [AUTH CONTEXT] Google authentication successful');
             
             // Google accounts are pre-verified, skip check
             // (Google OAuth provides verified email addresses)
@@ -269,15 +295,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const userDocRef = doc(db, 'users', user.uid);
             
             // Check if user already has a role in Firestore — never downgrade existing admins/owners
-            const existingDoc = await getDoc(userDocRef);
-            const existingRole = existingDoc.exists() ? existingDoc.data()?.role : null;
+            let existingDoc;
+            let retries = 0;
+            while (retries < 3) {
+                try {
+                    existingDoc = await getDoc(userDocRef);
+                    break;
+                } catch (error: any) {
+                    if (error.code === 'permission-denied' && retries < 2) {
+                        await new Promise(resolve => setTimeout(resolve, 500 * (retries + 1)));
+                        retries++;
+                    } else {
+                        throw error;
+                    }
+                }
+            }
+            
+            const existingRole = existingDoc?.exists() ? existingDoc.data()?.role : null;
             const privilegedRoles = ['admin', 'superadmin', 'owner'];
             
             let role = existingRole || 'customer';
             
             // If no existing role, check server-side for owner email
             if (!existingRole && user.email) {
-                const idToken = await user.getIdToken();
+                const idToken = await user.getIdToken(true); // Force refresh
                 try {
                     const roleResponse = await fetch('/api/user/get-role', {
                         method: 'POST',
@@ -309,23 +350,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     email: user.email,
                     displayName: user.displayName,
                     role,
-                    enrolledCourses: existingDoc.exists() ? (existingDoc.data()?.enrolledCourses ?? []) : [],
-                    createdAt: existingDoc.exists() ? existingDoc.data()?.createdAt : new Date(),
+                    enrolledCourses: existingDoc?.exists() ? (existingDoc.data()?.enrolledCourses ?? []) : [],
+                    createdAt: existingDoc?.exists() ? existingDoc.data()?.createdAt : new Date(),
                     updatedAt: new Date(),
                 },
                 { merge: true }
             );
 
-            const idToken = await user.getIdToken();
+            const idToken = await user.getIdToken(true); // Force refresh
             // Non-blocking session cookie; role cookie covers middleware
-            fetch('/api/auth/session', {
+            const sessionPromise = fetch('/api/auth/session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ idToken }),
-            }).catch(e => console.warn('⚠️ Session cookie failed (non-blocking):', e));
+            });
+            
+            try {
+                const response = await sessionPromise;
+                if (response.ok) {
+                    console.log('✅ [AUTH CONTEXT] Session cookie created via Google sign-in');
+                }
+            } catch (e) {
+                console.warn('⚠️ Session cookie failed (non-blocking):', e);
+            }
+            
+            console.log('✅ [AUTH CONTEXT] Google sign in complete');
         } catch (error: any) {
-            console.error('Google sign in error:', error);
-            throw new Error(error.message || 'Failed to sign in with Google');
+            console.error('❌ [AUTH CONTEXT] Google sign in error:', error);
+            throw error;
         }
     };
 
