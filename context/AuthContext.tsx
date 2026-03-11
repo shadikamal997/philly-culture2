@@ -161,18 +161,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const userCredential = await signInWithPopup(auth, provider);
             const user = userCredential.user;
 
-            const role = user.email === process.env.NEXT_PUBLIC_OWNER_EMAIL ? 'owner' : 'customer';
+            const userDocRef = doc(db, 'users', user.uid);
+            
+            // Check if user already has a role in Firestore — never downgrade existing admins/owners
+            const existingDoc = await getDoc(userDocRef);
+            const existingRole = existingDoc.exists() ? existingDoc.data()?.role : null;
+            const privilegedRoles = ['admin', 'superadmin', 'owner'];
+            const role = privilegedRoles.includes(existingRole)
+                ? existingRole // preserve existing privileged role
+                : (user.email === process.env.NEXT_PUBLIC_OWNER_EMAIL ? 'owner' : (existingRole || 'customer'));
 
-            const userDoc = doc(db, 'users', user.uid);
             await setDoc(
-                userDoc,
+                userDocRef,
                 {
                     uid: user.uid,
                     email: user.email,
                     displayName: user.displayName,
                     role,
-                    enrolledCourses: [],
-                    createdAt: new Date(),
+                    enrolledCourses: existingDoc.exists() ? (existingDoc.data()?.enrolledCourses ?? []) : [],
+                    createdAt: existingDoc.exists() ? existingDoc.data()?.createdAt : new Date(),
                     updatedAt: new Date(),
                 },
                 { merge: true }

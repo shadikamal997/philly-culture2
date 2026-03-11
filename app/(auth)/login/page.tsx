@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
@@ -12,12 +12,55 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/dashboard";
-  const { signIn, signInWithGoogle, userData, user } = useAuth();
+  const { signIn, signInWithGoogle, userData, user, loading: authLoading } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isAdminLogin, setIsAdminLogin] = useState(false);
+
+  // Auto-redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && user && userData) {
+      const role = userData.role;
+      if (role === 'admin' || role === 'superadmin' || role === 'owner') {
+        window.location.href = '/admin';
+      } else {
+        window.location.href = '/dashboard';
+      }
+    }
+  }, [user, userData, authLoading]);
+
+  const getUserRole = async (): Promise<string | null> => {
+    try {
+      const { auth } = await import("@/firebase/firebaseClient");
+      const currentUser = auth.currentUser;
+      if (!currentUser) return null;
+      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+      return userDoc.data()?.role ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  const redirectByRole = (role: string | null, wantsAdmin: boolean) => {
+    if (wantsAdmin) {
+      if (role === 'admin' || role === 'superadmin' || role === 'owner') {
+        toast.success("Welcome to Admin Panel!");
+        window.location.href = '/admin';
+      } else {
+        toast.error(
+          role
+            ? `Access denied. Your role is "${role}", not admin.`
+            : "Access denied. Admin account not found in the system."
+        );
+        setLoading(false);
+      }
+    } else {
+      toast.success("Welcome back!");
+      window.location.href = redirect !== '/dashboard' ? redirect : '/dashboard';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,35 +68,10 @@ export default function LoginPage() {
 
     try {
       await signIn(email, password);
-      
-      // Wait for auth state to be established
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Fetch user role from Firestore
-      const currentUser = (await import("@/firebase/firebaseClient")).auth.currentUser;
-      if (!currentUser) {
-        throw new Error("Authentication failed");
-      }
-
-      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-      const userRole = userDoc.data()?.role;
-
-      if (isAdminLogin) {
-        // Admin login requested
-        if (userRole === 'admin' || userRole === 'superadmin' || userRole === 'owner') {
-          toast.success("Welcome to Admin Panel!");
-          window.location.href = '/admin';
-        } else {
-          toast.error("Access denied. Admin privileges required.");
-          setLoading(false);
-          return;
-        }
-      } else {
-        // Regular user login
-        toast.success("Welcome back!");
-        const redirectUrl = redirect !== '/dashboard' ? redirect : '/dashboard';
-        window.location.href = redirectUrl;
-      }
+      // Small wait for session cookie to propagate
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const role = await getUserRole();
+      redirectByRole(role, isAdminLogin);
     } catch (err: any) {
       console.error("Login error:", err);
       toast.error(err.message || "Failed to sign in");
@@ -65,41 +83,24 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      
-      // Wait for auth state
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Fetch user role from Firestore
-      const currentUser = (await import("@/firebase/firebaseClient")).auth.currentUser;
-      if (!currentUser) {
-        throw new Error("Authentication failed");
-      }
-
-      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-      const userRole = userDoc.data()?.role;
-
-      if (isAdminLogin) {
-        // Admin login requested
-        if (userRole === 'admin' || userRole === 'superadmin' || userRole === 'owner') {
-          toast.success("Welcome to Admin Panel!");
-          window.location.href = '/admin';
-        } else {
-          toast.error("Access denied. Admin privileges required.");
-          setLoading(false);
-          return;
-        }
-      } else {
-        // Regular user login
-        toast.success("Welcome back!");
-        const redirectUrl = redirect !== '/dashboard' ? redirect : '/dashboard';
-        window.location.href = redirectUrl;
-      }
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const role = await getUserRole();
+      redirectByRole(role, isAdminLogin);
     } catch (err: any) {
       console.error("Google sign in error:", err);
       toast.error(err.message || "Failed to sign in with Google");
       setLoading(false);
     }
   };
+
+  // Show nothing while checking auth state to prevent flash
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-orange-50 dark:from-gray-950 dark:via-black dark:to-red-950">
+        <div className="w-10 h-10 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>
