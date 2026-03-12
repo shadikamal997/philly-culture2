@@ -116,14 +116,14 @@ export default function CreateProgram() {
       const finalThumbnailUrl = thumbnailUrl.trim() || validImageUrls[0] || "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800";
       const finalImages = validImageUrls.length > 0 ? validImageUrls : [finalThumbnailUrl];
       
-      // 🔑 STEP 2: Get authentication token
+      // 🔑 STEP 2: Get authentication token (force refresh for fresh token)
       setUploadProgress(50);
       const user = auth.currentUser;
       if (!user) {
         throw new Error('Not authenticated');
       }
       
-      const idToken = await user.getIdToken();
+      const idToken = await user.getIdToken(true); // Force refresh to get valid token
 
       // 📦 STEP 3: Prepare program data
       const programData = {

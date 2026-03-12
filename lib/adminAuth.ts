@@ -23,9 +23,23 @@ export async function verifyAdminAccess(req: NextRequest): Promise<AdminUser> {
   }
   
   try {
-    // Verify Firebase ID token
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    const userId = decodedToken.uid;
+    // Try verifying as ID token first, then session cookie
+    let decodedToken;
+    let userId: string;
+    
+    try {
+      decodedToken = await adminAuth.verifyIdToken(token);
+      userId = decodedToken.uid;
+    } catch (idTokenError) {
+      // If ID token fails, try session cookie
+      try {
+        decodedToken = await adminAuth.verifySessionCookie(token, true);
+        userId = decodedToken.uid;
+      } catch (sessionError) {
+        console.error('[adminAuth] Token verification failed:', idTokenError);
+        throw new Error('Unauthorized: Invalid or expired token');
+      }
+    }
     
     // Get user from Firestore to check role
     const userDoc = await adminDb.collection('users').doc(userId).get();
@@ -51,7 +65,8 @@ export async function verifyAdminAccess(req: NextRequest): Promise<AdminUser> {
     if (error.message.includes('Forbidden') || error.message.includes('Unauthorized')) {
       throw error;
     }
-    throw new Error('Unauthorized: Invalid token');
+    console.error('[adminAuth] Unexpected error:', error);
+    throw new Error('Unauthorized: Authentication failed');
   }
 }
 
