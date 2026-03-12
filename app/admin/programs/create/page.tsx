@@ -5,7 +5,6 @@ import { auth } from "@/firebase/firebaseClient";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import toast, { Toaster } from "react-hot-toast";
-import { uploadImage, validateImageFile, createImagePreview } from "@/utils/imageUpload";
 
 export default function CreateProgram() {
   const router = useRouter();
@@ -22,9 +21,9 @@ export default function CreateProgram() {
   const [difficultyLevel, setDifficultyLevel] = useState<"beginner" | "intermediate" | "advanced">("beginner");
   const [language, setLanguage] = useState("en");
   
-  // Image File Upload (Multiple - up to 5)
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  // Image URLs (up to 5)
+  const [imageUrls, setImageUrls] = useState<string[]>(['']);
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
   
   // Additional Fields
   const [prerequisites, setPrerequisites] = useState("");
@@ -48,52 +47,26 @@ export default function CreateProgram() {
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    // Check if adding these files would exceed the limit
-    const remainingSlots = 5 - imageFiles.length;
-    if (remainingSlots === 0) {
+  const handleAddImageUrl = () => {
+    if (imageUrls.length >= 5) {
       toast.error("Maximum 5 images allowed");
       return;
     }
-
-    const filesToAdd = Array.from(files).slice(0, remainingSlots);
-    const newFiles: File[] = [];
-    const newPreviews: string[] = [];
-
-    for (const file of filesToAdd) {
-      // Validate file
-      const validation = validateImageFile(file);
-      if (!validation.isValid) {
-        toast.error(`${file.name}: ${validation.error}`);
-        continue;
-      }
-
-      newFiles.push(file);
-      newPreviews.push(createImagePreview(file));
-    }
-
-    if (newFiles.length > 0) {
-      setImageFiles([...imageFiles, ...newFiles]);
-      setImagePreviews([...imagePreviews, ...newPreviews]);
-      toast.success(`✅ ${newFiles.length} image(s) added`);
-    }
-
-    // Reset the input
-    e.target.value = '';
+    setImageUrls([...imageUrls, '']);
   };
 
-  const handleRemoveImage = (index: number) => {
-    // Revoke the object URL to free memory
-    URL.revokeObjectURL(imagePreviews[index]);
-    
-    // Remove from arrays
-    setImageFiles(imageFiles.filter((_, i) => i !== index));
-    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
-    
-    toast.success("Image removed");
+  const handleRemoveImageUrl = (index: number) => {
+    if (imageUrls.length === 1) {
+      setImageUrls(['']);
+    } else {
+      setImageUrls(imageUrls.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleImageUrlChange = (index: number, value: string) => {
+    const newUrls = [...imageUrls];
+    newUrls[index] = value;
+    setImageUrls(newUrls);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,52 +108,13 @@ export default function CreateProgram() {
         return;
       }
 
-      // 🖼️ STEP 1: Upload all images if provided
-      let uploadedImageUrls: string[] = [];
+      // 🖼️ STEP 1: Process image URLs
+      setUploadProgress(10);
+      const validImageUrls = imageUrls.filter(url => url && url.trim().length > 0);
       
-      if (imageFiles.length > 0) {
-        try {
-          setUploadProgress(10);
-          
-          // Upload images with 10-second timeout per image
-          const uploadPromises = imageFiles.map((file, index) => {
-            return Promise.race([
-              uploadImage(
-                file,
-                'programs',
-                (progress) => {
-                  // Calculate overall progress (10-50% for all uploads)
-                  const overallProgress = 10 + (progress / imageFiles.length) * 0.4;
-                  setUploadProgress(Math.min(overallProgress, 50));
-                }
-              ),
-              new Promise<never>((_, reject) => 
-                setTimeout(() => reject(new Error(`Storage not configured - using default image`)), 2000)
-              )
-            ]);
-          });
-          
-          uploadedImageUrls = await Promise.all(uploadPromises);
-          toast.success(`✅ ${uploadedImageUrls.length} image(s) uploaded successfully!`);
-        } catch (error: any) {
-          console.error('Image upload error:', error);
-          
-          // Check if it's a storage setup error
-          if (error.message?.includes('storage') || error.message?.includes('Firebase Storage')) {
-            toast.error(
-              'Firebase Storage not set up. Creating program with default image...',
-              { id: loadingToast, duration: 5000 }
-            );
-            // Continue with default image
-            uploadedImageUrls = [];
-          } else {
-            throw new Error(`Image upload failed: ${error.message}`);
-          }
-        }
-      }
-      
-      // Use first uploaded image as thumbnail, or default
-      const finalThumbnailUrl = uploadedImageUrls[0] || "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800";
+      // Use thumbnail URL or first image URL or default
+      const finalThumbnailUrl = thumbnailUrl.trim() || validImageUrls[0] || "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800";
+      const finalImages = validImageUrls.length > 0 ? validImageUrls : [finalThumbnailUrl];
       
       // 🔑 STEP 2: Get authentication token
       setUploadProgress(50);
@@ -198,7 +132,7 @@ export default function CreateProgram() {
         fullDescription: fullDescription || shortDescription || "Comprehensive culinary program",
         instructorName: instructorName || "Chef Instructor",
         thumbnail: finalThumbnailUrl,
-        images: uploadedImageUrls.length > 0 ? uploadedImageUrls : [finalThumbnailUrl],
+        images: finalImages,
         programType,
         category,
         difficultyLevel,
@@ -401,66 +335,110 @@ export default function CreateProgram() {
           </div>
         </div>
 
-        {/* IMAGE UPLOAD */}
+        {/* IMAGE URLS */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <span className="text-2xl">🖼️</span> Program Images
+            <span className="text-2xl">🖼️</span> Program Images (URLs)
           </h2>
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">
-                Upload Images ({imageFiles.length}/5)
-              </label>
-              <div className="flex items-center gap-4">
-                <label className={`px-6 py-3 rounded-lg transition-colors cursor-pointer font-medium ${
-                  imageFiles.length >= 5
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-red-600 hover:bg-red-700 text-white'
-                }`}>
-                  📤 Choose Images
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-                    onChange={handleImageSelect}
-                    className="hidden"
-                    multiple
-                    disabled={imageFiles.length >= 5}
-                  />
-                </label>
-              </div>
-              <p className="text-xs text-gray-500 mt-2">Upload up to 5 images • JPEG, PNG, WebP, GIF (Max 5MB each)</p>
-              <p className="text-xs text-blue-600 mt-1">💡 First image will be used as the main thumbnail</p>
+              <label className="block text-sm font-medium mb-2">Thumbnail URL (Optional)</label>
+              <input
+                type="url"
+                placeholder="https://example.com/thumbnail.jpg"
+                value={thumbnailUrl}
+                onChange={(e) => setThumbnailUrl(e.target.value)}
+                className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-600"
+              />
+              <p className="text-xs text-gray-500 mt-1">If empty, first image URL below will be used</p>
             </div>
 
-            {imagePreviews.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {imagePreviews.map((preview, index) => (
-                  <div key={index} className="relative group">
-                    <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700">
-                      <img
-                        src={preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-full object-cover"
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Image URLs ({imageUrls.filter(u => u.trim()).length}/5)
+              </label>
+              <div className="space-y-3">
+                {imageUrls.map((url, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <input
+                        type="url"
+                        placeholder={`Image ${index + 1} URL ${index === 0 ? '(used as thumbnail if no thumbnail URL)' : ''}`}
+                        value={url}
+                        onChange={(e) => handleImageUrlChange(index, e.target.value)}
+                        className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-600"
                       />
-                      {index === 0 && (
-                        <div className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
-                          Main Thumbnail
-                        </div>
-                      )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(index)}
-                      className="absolute top-2 right-2 bg-black/70 hover:bg-red-600 text-white p-2 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      🗑️
-                    </button>
-                    <p className="text-xs text-gray-500 mt-1 truncate">
-                      {imageFiles[index].name}
-                    </p>
+                    {imageUrls.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImageUrl(index)}
+                        className="px-3 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                      >
+                        🗑️
+                      </button>
+                    )}
                   </div>
                 ))}
+              </div>
+              
+              {imageUrls.length < 5 && (
+                <button
+                  type="button"
+                  onClick={handleAddImageUrl}
+                  className="mt-3 px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  ➕ Add Another Image URL
+                </button>
+              )}
+              
+              <p className="text-xs text-gray-500 mt-2">
+                💡 Paste image URLs from Unsplash, ImgBB, Imgur, or any image hosting service
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                Free image hosting: <a href="https://imgbb.com" target="_blank" className="underline">ImgBB</a> • <a href="https://unsplash.com" target="_blank" className="underline">Unsplash</a>
+              </p>
+            </div>
+
+            {/* Image Preview */}
+            {(thumbnailUrl.trim() || imageUrls.some(u => u.trim())) && (
+              <div className="mt-4">
+                <p className="text-sm font-medium mb-2">Preview:</p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {thumbnailUrl.trim() && (
+                    <div>
+                      <div className="relative w-full h-32 rounded-lg overflow-hidden border-2 border-red-500">
+                        <img
+                          src={thumbnailUrl}
+                          alt="Thumbnail preview"
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Invalid+URL'; }}
+                        />
+                        <div className="absolute top-1 left-1 bg-red-600 text-white text-xs px-2 py-1 rounded">
+                          Thumbnail
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {imageUrls.filter(u => u.trim()).map((url, index) => (
+                    <div key={index}>
+                      <div className="relative w-full h-32 rounded-lg overflow-hidden border-2 border-gray-300">
+                        <img
+                          src={url}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Invalid+URL'; }}
+                        />
+                        {index === 0 && !thumbnailUrl.trim() && (
+                          <div className="absolute top-1 left-1 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                            Auto Thumbnail
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
