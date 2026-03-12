@@ -15,6 +15,8 @@ export async function uploadImage(
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     try {
+      console.log('[Upload] Starting upload for:', file.name, 'Size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+      
       // Validate file type
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
       if (!validTypes.includes(file.type)) {
@@ -34,6 +36,8 @@ export async function uploadImage(
       const filename = `${timestamp}-${randomString}.${extension}`;
       const path = `${folder}/${filename}`;
 
+      console.log('[Upload] Creating storage reference:', path);
+
       // Create storage reference
       const storageRef = ref(storage, path);
 
@@ -45,25 +49,42 @@ export async function uploadImage(
         'state_changed',
         (snapshot: UploadTaskSnapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          console.log('[Upload] Progress:', progress.toFixed(1), '%');
           if (onProgress) {
             onProgress(Math.round(progress));
           }
         },
         (error) => {
-          console.error('Upload error:', error);
-          reject(new Error(`Upload failed: ${error.message}`));
+          console.error('[Upload] Error:', error);
+          console.error('[Upload] Error code:', error.code);
+          console.error('[Upload] Error message:', error.message);
+          
+          // Provide more specific error messages
+          if (error.code === 'storage/unauthorized') {
+            reject(new Error('Firebase Storage not configured or permissions denied. Please set up Firebase Storage first.'));
+          } else if (error.code === 'storage/canceled') {
+            reject(new Error('Upload was canceled'));
+          } else if (error.code === 'storage/unknown') {
+            reject(new Error('Firebase Storage is not initialized. Please enable Firebase Storage in your project.'));
+          } else {
+            reject(new Error(`Upload failed: ${error.message}`));
+          }
         },
         async () => {
           // Upload completed successfully
           try {
+            console.log('[Upload] Upload complete, getting download URL...');
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            console.log('[Upload] Success! URL:', downloadURL);
             resolve(downloadURL);
           } catch (error: any) {
+            console.error('[Upload] Failed to get download URL:', error);
             reject(new Error(`Failed to get download URL: ${error.message}`));
           }
         }
       );
     } catch (error: any) {
+      console.error('[Upload] Initialization error:', error);
       reject(error);
     }
   });

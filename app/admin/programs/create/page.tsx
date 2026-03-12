@@ -141,23 +141,43 @@ export default function CreateProgram() {
       if (imageFiles.length > 0) {
         try {
           setUploadProgress(10);
+          
+          // Add timeout for uploads (30 seconds per image)
+          const uploadTimeout = 30000 * imageFiles.length;
+          
           const uploadPromises = imageFiles.map((file, index) => {
-            return uploadImage(
-              file,
-              'programs',
-              (progress) => {
-                // Calculate overall progress (10-50% for all uploads)
-                const overallProgress = 10 + (progress / imageFiles.length) * 0.4;
-                setUploadProgress(Math.min(overallProgress, 50));
-              }
-            );
+            return Promise.race([
+              uploadImage(
+                file,
+                'programs',
+                (progress) => {
+                  // Calculate overall progress (10-50% for all uploads)
+                  const overallProgress = 10 + (progress / imageFiles.length) * 0.4;
+                  setUploadProgress(Math.min(overallProgress, 50));
+                }
+              ),
+              new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error(`Upload timeout for ${file.name}`)), uploadTimeout)
+              )
+            ]);
           });
           
           uploadedImageUrls = await Promise.all(uploadPromises);
           toast.success(`✅ ${uploadedImageUrls.length} image(s) uploaded successfully!`);
         } catch (error: any) {
           console.error('Image upload error:', error);
-          throw new Error(`Image upload failed: ${error.message}`);
+          
+          // Check if it's a storage setup error
+          if (error.message?.includes('storage') || error.message?.includes('Firebase Storage')) {
+            toast.error(
+              'Firebase Storage not set up. Creating program with default image...',
+              { id: loadingToast, duration: 5000 }
+            );
+            // Continue with default image
+            uploadedImageUrls = [];
+          } else {
+            throw new Error(`Image upload failed: ${error.message}`);
+          }
         }
       }
       
