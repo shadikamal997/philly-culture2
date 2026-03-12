@@ -20,80 +20,88 @@ export default function LoginPage() {
   const [isAdminLogin, setIsAdminLogin] = useState(false);
   const [sessionExpiredHandled, setSessionExpiredHandled] = useState(false);
   const hasRedirectedRef = useRef(false); // Prevent useEffect infinite loop
-  const redirectLoopCountRef = useRef(0); // Detect infinite redirect loops
+  const clearingSessionRef = useRef(false); // Track if we're clearing a session
 
-  // 🚨 CRITICAL: Detect and break infinite redirect loops
+  // Handle authentication errors (session expired, auth required, etc.)
   useEffect(() => {
-    // Check if we're in a redirect loop
-    if (redirect === '/admin' && !user) {
-      redirectLoopCountRef.current += 1;
-      
-      if (redirectLoopCountRef.current > 3) {
-        console.error('🚨 REDIRECT LOOP DETECTED! Force clearing all auth state...');
-        
-        // Clear ALL cookies
-        document.cookie.split(";").forEach((c) => {
-          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-        });
-        
-        // Clear storage
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        // Force logout
-        logout().catch(() => {});
-        
-        // Reset counter
-        redirectLoopCountRef.current = 0;
-        hasRedirectedRef.current = false;
-        
-        // Show error
-        toast.error('Session expired. Please sign in again.', { duration: 5000 });
-      }
-    } else {
-      redirectLoopCountRef.current = 0; // Reset if not in loop
-    }
-  }, [redirect, user, logout]);
-
-  // Handle session expiration
-  useEffect(() => {
+    // Only handle session_expired - this requires full cleanup
     if (errorParam === 'session_expired' && !sessionExpiredHandled) {
-      console.log('🔥 [LOGIN PAGE] Session expired - forcing logout');
+      console.log('🔥 [LOGIN PAGE] Session expired - clearing auth state');
       setSessionExpiredHandled(true);
+      clearingSessionRef.current = true; // Block all redirects during cleanup
       
-      // Clear ALL cookies immediately
-      document.cookie.split(";").forEach((c) => {
-        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-      });
+      async function clearAuth() {
+        try {
+          // Clear ALL cookies immediately
+          document.cookie.split(";").forEach((c) => {
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+          });
+          
+          // Clear storage
+          localStorage.clear();
+          sessionStorage.clear();
+          
+          // Sign out from Firebase to force fresh login
+          await logout();
+          
+          // Reset the redirect ref to prevent auto-redirect
+          hasRedirectedRef.current = false;
+          
+          toast.error('Your session expired. Please sign in again.');
+          
+          // Reset clearingSessionRef after cleanup completes
+          setTimeout(() => {
+            clearingSessionRef.current = false;
+            console.log('✅ [LOGIN PAGE] Session cleanup complete, ready for login');
+          }, 1000);
+        } catch (error) {
+          console.error('Error during session cleanup:', error);
+          toast.error('Your session expired. Please sign in again.');
+          clearingSessionRef.current = false; // Reset even on error
+        }
+      }
       
-      // Clear storage
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      // Force sign out to clear stale auth state
-      logout().catch(() => {
-        // Ignore logout errors
-      });
-      
-      toast.error('Your session expired. Please sign in again.');
+      clearAuth();
     }
-  }, [errorParam, sessionExpiredHandled, logout]);
+    
+    // For other auth errors, just show a message - don't log out
+    if (errorParam && errorParam !== 'session_expired' && !sessionExpiredHandled) {
+      setSessionExpiredHandled(true); // Prevent showing multiple times
+      
+      if (errorParam === 'user_not_found') {
+        toast.error('User account not found. Please contact support.');
+      } else if (errorParam === 'auth_required' || errorParam === 'session_required') {
+        toast('Please sign in to continue.', { icon: '🔐' });
+      } else if (errorParam === 'unauthorized') {
+        toast.error('You do not have permission to access that page.');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [errorParam, sessionExpiredHandled]); // Don't include logout - it changes on every render
 
   // Auto-redirect if already authenticated
   // IMPORTANT: Only redirect if NOT actively logging in (prevents race condition)
   useEffect(() => {
+    console.log('🔍 [LOGIN PAGE] useEffect running');
+    console.log('   - hasRedirected:', hasRedirectedRef.current);
+    console.log('   - clearingSession:', clearingSessionRef.current);
+    console.log('   - authLoading:', authLoading);
+    console.log('   - hasUser:', !!user);
+    console.log('   - hasUserData:', !!userData);
+    console.log('   - userRole:', userData?.role);
+    console.log('   - redirect:', redirect);
+    console.log('   - errorParam:', errorParam);
+    
     // 🔥 CRITICAL FIX: Prevent infinite re-renders
     if (hasRedirectedRef.current) {
-      return; // Already redirected, don't run again
+      console.log('⏭️  [LOGIN PAGE] Already redirected, skipping');
+      return;
     }
     
-    // Only log if we have something meaningful to process
-    if (user || userData || authLoading) {
-      console.log('🔵 [LOGIN PAGE] useEffect triggered', { 
-        authLoading, 
-        hasUser: !,
-        redirect 
-      });
+    // BLOCK redirects while clearing expired session
+    if (clearingSessionRef.current) {
+      console.log('⏸️  [LOGIN PAGE] Currently clearing session, blocking redirect');
+      return;
     }
     
     if (authLoading) {
@@ -101,22 +109,20 @@ export default function LoginPage() {
       return;
     }
     
-    // 🔥 CRITICAL: NEVER auto-redirect if there's an error param
-    // This breaks the infinite loop when admin layout rejects expired tokens
-    if (errorParam) {
-      console.log('⚠️  [LOGIN PAGE] Error param detected, BLOCKING auto-redirect:', errorParam);
+    // 🔥 CRITICAL: ONLY block auto-redirect for session_expired
+    // Other errors are informational and shouldn't prevent redirect if user is logged in
+    if (errorParam === 'session_expired') {
+      console.log('⚠️  [LOGIN PAGE] Session expired error, BLOCKING auto-redirect');
       hasRedirectedRef.current = false; // Allow manual login
+      setLoading(false);
       return;
     }
     
-    // 🔥 CRITICAL: If redirect=/admin but no user, we're in a loop - STOP
-    if (redirect === '/admin' && (!user || !userData)) {
-      console.log('⚠️  [LOGIN PAGE] Redirect to admin without valid user - BLOCKING to prevent loop');
-      return;
-    }
-    
+    // Wait for user and userData to be populated
     if (!user || !userData) {
-      return; // Silently skip if no user - don't log spam
+      console.log('⏸️  [LOGIN PAGE] No user or userData yet, waiting...');
+      setLoading(false);
+      return;
     }
 
     // User is authenticated — set role cookie and redirect based on role
@@ -130,7 +136,7 @@ export default function LoginPage() {
 
     // Mark that we're about to redirect (prevents re-running)
     hasRedirectedRef.current = true;
-    setLoading(false); // Clear loading state
+    setLoading(false);
 
     if (role === 'admin' || role === 'superadmin' || role === 'owner') {
       console.log('🚀 [LOGIN PAGE] Redirecting to /admin');
@@ -139,10 +145,7 @@ export default function LoginPage() {
       console.log('🚀 [LOGIN PAGE] Redirecting to', redirect !== '/login' ? redirect : '/dashboard');
       window.location.replace(redirect !== '/login' ? redirect : '/dashboard');
     }
-  }, [user, userData, authLoading, errorParam, redirectg to', redirect !== '/login' ? redirect : '/dashboard');
-      window.location.replace(redirect !== '/login' ? redirect : '/dashboard');
-    }
-  }, [user, userData, authLoading, errorParam]);
+  }, [user, userData, authLoading, errorParam, redirect]);
 
   const handleClearAndLogin = async () => {
     console.log('🧹 [LOGIN PAGE] Clearing ALL auth data before login...');
@@ -204,10 +207,15 @@ export default function LoginPage() {
       console.log('🔵 [LOGIN PAGE] Calling signIn()...');
       await signIn(email, password);
       console.log('✅ [LOGIN PAGE] signIn() completed successfully');
+      
+      // Small delay to ensure cookies are fully set before redirect
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Don't redirect here! Let the useEffect handle it after onAuthStateChanged fires
       // and populates user/userData. This prevents race condition where getUserRole()
       // returns null because auth.currentUser isn't set yet.
       toast.success('Signing in...');
+      setLoading(false); // Clear loading - useEffect will handle redirect
     } catch (err: any) {
       console.error('❌ [LOGIN PAGE] Sign in failed:', err);
       console.error("Login error:", err);
@@ -232,8 +240,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      // Don't redirect here! Let the useEffect handle it after onAuthStateChanged fires
-      toast.success('Signing in...');
+      // The useEffect will handle redirect after onAuthStateChanged fires
+      toast.success('Signed in successfully! Redirecting...');
+      setLoading(false); // Clear loading - useEffect will handle redirect
     } catch (err: any) {
       console.error("Google sign in error:", err);
       toast.error(err.message || "Failed to sign in with Google");

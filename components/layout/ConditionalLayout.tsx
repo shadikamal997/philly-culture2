@@ -20,7 +20,7 @@ export function ConditionalLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Navbar />
-      <div className="pt-20 min-h-screen">
+      <div className="pt-16 min-h-screen">
         {children}
       </div>
       {!hideFooter && <Footer />}

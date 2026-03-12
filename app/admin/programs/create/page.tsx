@@ -5,6 +5,7 @@ import { auth } from "@/firebase/firebaseClient";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import toast, { Toaster } from "react-hot-toast";
+import { uploadImage, validateImageFile, createImagePreview } from "@/utils/imageUpload";
 
 export default function CreateProgram() {
   const router = useRouter();
@@ -21,12 +22,11 @@ export default function CreateProgram() {
   const [difficultyLevel, setDifficultyLevel] = useState<"beginner" | "intermediate" | "advanced">("beginner");
   const [language, setLanguage] = useState("en");
   
-  // Image URL (no upload needed)
-  const [thumbnailUrl, setThumbnailUrl] = useState("");
-  const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
+  // Image File Upload (Multiple - up to 5)
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   
   // Additional Fields
-  const [videoIntroUrl, setVideoIntroUrl] = useState("");
   const [prerequisites, setPrerequisites] = useState("");
   const [learningObjectives, setLearningObjectives] = useState("");
   const [tags, setTags] = useState("");
@@ -48,14 +48,52 @@ export default function CreateProgram() {
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const handleThumbnailUrlChange = (url: string) => {
-    setThumbnailUrl(url);
-    // Update preview when URL is valid
-    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-      setThumbnailPreview(url);
-    } else {
-      setThumbnailPreview("");
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    // Check if adding these files would exceed the limit
+    const remainingSlots = 5 - imageFiles.length;
+    if (remainingSlots === 0) {
+      toast.error("Maximum 5 images allowed");
+      return;
     }
+
+    const filesToAdd = Array.from(files).slice(0, remainingSlots);
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
+
+    for (const file of filesToAdd) {
+      // Validate file
+      const validation = validateImageFile(file);
+      if (!validation.isValid) {
+        toast.error(`${file.name}: ${validation.error}`);
+        continue;
+      }
+
+      newFiles.push(file);
+      newPreviews.push(createImagePreview(file));
+    }
+
+    if (newFiles.length > 0) {
+      setImageFiles([...imageFiles, ...newFiles]);
+      setImagePreviews([...imagePreviews, ...newPreviews]);
+      toast.success(`✅ ${newFiles.length} image(s) added`);
+    }
+
+    // Reset the input
+    e.target.value = '';
+  };
+
+  const handleRemoveImage = (index: number) => {
+    // Revoke the object URL to free memory
+    URL.revokeObjectURL(imagePreviews[index]);
+    
+    // Remove from arrays
+    setImageFiles(imageFiles.filter((_, i) => i !== index));
+    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
+    
+    toast.success("Image removed");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,11 +135,37 @@ export default function CreateProgram() {
         return;
       }
 
-      // 🖼️ STEP 1: Use provided thumbnail URL or default
-      const finalThumbnailUrl = thumbnailUrl || "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800";
+      // 🖼️ STEP 1: Upload all images if provided
+      let uploadedImageUrls: string[] = [];
+      
+      if (imageFiles.length > 0) {
+        try {
+          setUploadProgress(10);
+          const uploadPromises = imageFiles.map((file, index) => {
+            return uploadImage(
+              file,
+              'programs',
+              (progress) => {
+                // Calculate overall progress (10-50% for all uploads)
+                const overallProgress = 10 + (progress / imageFiles.length) * 0.4;
+                setUploadProgress(Math.min(overallProgress, 50));
+              }
+            );
+          });
+          
+          uploadedImageUrls = await Promise.all(uploadPromises);
+          toast.success(`✅ ${uploadedImageUrls.length} image(s) uploaded successfully!`);
+        } catch (error: any) {
+          console.error('Image upload error:', error);
+          throw new Error(`Image upload failed: ${error.message}`);
+        }
+      }
+      
+      // Use first uploaded image as thumbnail, or default
+      const finalThumbnailUrl = uploadedImageUrls[0] || "https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800";
       
       // 🔑 STEP 2: Get authentication token
-      setUploadProgress(30);
+      setUploadProgress(50);
       const user = auth.currentUser;
       if (!user) {
         throw new Error('Not authenticated');
@@ -116,6 +180,7 @@ export default function CreateProgram() {
         fullDescription: fullDescription || shortDescription || "Comprehensive culinary program",
         instructorName: instructorName || "Chef Instructor",
         thumbnail: finalThumbnailUrl,
+        images: uploadedImageUrls.length > 0 ? uploadedImageUrls : [finalThumbnailUrl],
         programType,
         category,
         difficultyLevel,
@@ -127,7 +192,6 @@ export default function CreateProgram() {
         certificateEnabled,
         
         // Additional fields
-        videoIntroUrl: videoIntroUrl || null,
         prerequisites: prerequisites ? prerequisites.split("\n").filter(p => p.trim()) : [],
         learningObjectives: learningObjectives ? learningObjectives.split("\n").filter(o => o.trim()) : [],
         tags: tags ? tags.split(",").map(t => t.trim()).filter(t => t) : [],
@@ -143,7 +207,7 @@ export default function CreateProgram() {
       };
       
       // 🚀 STEP 4: Call backend API
-      setUploadProgress(50);
+      setUploadProgress(70);
       const response = await fetch('/api/admin/programs/create', {
         method: 'POST',
         headers: {
@@ -322,45 +386,65 @@ export default function CreateProgram() {
         {/* IMAGE UPLOAD */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <span className="text-2xl">🖼️</span> Program Image
+            <span className="text-2xl">🖼️</span> Program Images
           </h2>
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Thumbnail Image URL</label>
-              <input
-                type="url"
-                placeholder="https://example.com/image.jpg"
-                value={thumbnailUrl}
-                onChange={(e) => handleThumbnailUrlChange(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-600"
-              />
-              <p className="text-xs text-gray-500 mt-1">Paste an image URL from Imgur, Cloudinary, or Unsplash (1200x800px recommended)</p>
-              <p className="text-xs text-blue-600 mt-1">💡 No image? We'll use a default placeholder</p>
+              <label className="block text-sm font-medium mb-2">
+                Upload Images ({imageFiles.length}/5)
+              </label>
+              <div className="flex items-center gap-4">
+                <label className={`px-6 py-3 rounded-lg transition-colors cursor-pointer font-medium ${
+                  imageFiles.length >= 5
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-red-600 hover:bg-red-700 text-white'
+                }`}>
+                  📤 Choose Images
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                    multiple
+                    disabled={imageFiles.length >= 5}
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Upload up to 5 images • JPEG, PNG, WebP, GIF (Max 5MB each)</p>
+              <p className="text-xs text-blue-600 mt-1">💡 First image will be used as the main thumbnail</p>
             </div>
 
-            {thumbnailPreview && (
-              <div className="relative w-full h-48 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                <Image 
-                  src={thumbnailPreview} 
-                  alt="Preview" 
-                  fill
-                  className="object-cover"
-                />
+            {imagePreviews.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className="relative group">
+                    <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-gray-200 dark:border-gray-700">
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      {index === 0 && (
+                        <div className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
+                          Main Thumbnail
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(index)}
+                      className="absolute top-2 right-2 bg-black/70 hover:bg-red-600 text-white p-2 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      🗑️
+                    </button>
+                    <p className="text-xs text-gray-500 mt-1 truncate">
+                      {imageFiles[index].name}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Video Introduction URL (Optional)</label>
-              <input
-                type="url"
-                placeholder="https://youtube.com/watch?v=..."
-                value={videoIntroUrl}
-                onChange={(e) => setVideoIntroUrl(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-600"
-              />
-              <p className="text-xs text-gray-500 mt-1">YouTube or Vimeo URL for program preview video</p>
-            </div>
           </div>
         </div>
 

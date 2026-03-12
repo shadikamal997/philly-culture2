@@ -14,8 +14,8 @@ export default function Navbar() {
   };
 
   return (
-    <header className="fixed top-0 w-full bg-black text-white z-50">
-      <div className="max-w-6xl mx-auto flex justify-between items-center px-6 py-4">
+    <header className="fixed top-0 w-full bg-white text-black shadow-md z-50 h-16">
+      <div className="max-w-6xl mx-auto flex justify-between items-center px-6 h-full">
         <Link href="/" className="font-bold text-lg">
           Philly Culture Academy
         </Link>

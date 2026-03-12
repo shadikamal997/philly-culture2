@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -8,8 +8,16 @@ export default function ResetAuthPage() {
   const { logout, user } = useAuth();
   const router = useRouter();
   const [status, setStatus] = useState('Clearing authentication...');
+  const hasRunRef = useRef(false);
 
   useEffect(() => {
+    // Prevent running multiple times
+    if (hasRunRef.current) {
+      console.log('🛑 Reset already ran, skipping...');
+      return;
+    }
+    hasRunRef.current = true;
+
     async function clearEverything() {
       try {
         // Step 1: Clear all cookies

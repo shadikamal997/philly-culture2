@@ -9,7 +9,7 @@ import EmailCapture from '@/components/home/EmailCapture';
 
 export default function Home() {
   return (
-    <main className="overflow-x-hidden">
+    <main className="overflow-x-hidden -mt-16">
       {/* Hero Section with Parallax Background */}
       <HeroSection />
       

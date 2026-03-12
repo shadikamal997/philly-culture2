@@ -189,36 +189,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const idToken = await userCredential.user.getIdToken(true); // true = force refresh
             console.log('✅ [AUTH CONTEXT] Fresh ID token obtained');
 
-            // Fire session cookie creation with a 5s timeout.
-            // This is best-effort — the role cookie (set by onAuthStateChanged) handles
-            // middleware access if the session API is slow or fails.
-            const sessionPromise = fetch('/api/auth/session', {
+            // 🔥 CRITICAL FIX: Make session cookie creation BLOCKING
+            // If this fails, login should fail - don't allow redirect without session cookie
+            console.log('🔄 [AUTH CONTEXT] Creating session cookie...');
+            const response = await fetch('/api/auth/session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ idToken }),
             });
-            const timeoutPromise = new Promise<Response>((_, reject) =>
-                setTimeout(() => reject(new Error('Session API timeout')), 5000)
-            );
 
-            try {
-                const response = await Promise.race([sessionPromise, timeoutPromise]);
-                if (response.ok) {
-                    console.log('✅ [AUTH CONTEXT] Session cookie created');
-                } else {
-                    const data = await response.json().catch(() => ({}));
-                    if (response.status === 429) {
-                        throw new Error(data.error || 'Too many login attempts. Please wait a few minutes.');
-                    }
-                    console.warn('⚠️ [AUTH CONTEXT] Session API non-ok (non-blocking):', response.status, data.error);
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                if (response.status === 429) {
+                    throw new Error(data.error || 'Too many login attempts. Please wait a few minutes.');
                 }
-            } catch (sessionErr: any) {
-                if (sessionErr.message?.includes('Too many') || sessionErr.message?.includes('wait')) {
-                    throw sessionErr;
-                }
-                console.warn('⚠️ [AUTH CONTEXT] Session API error (non-blocking):', sessionErr.message);
+                // Session cookie creation failed - this is critical, throw error
+                console.error('❌ [AUTH CONTEXT] Session cookie creation failed:', response.status, data.error);
+                throw new Error('Failed to create session. Please try again.');
             }
 
+            console.log('✅ [AUTH CONTEXT] Session cookie created successfully');
             console.log('✅ [AUTH CONTEXT] Sign in complete');
         } catch (error: any) {
             console.error('❌ [AUTH CONTEXT] Sign in error:', error);
@@ -326,7 +316,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     existingDoc = await getDoc(userDocRef);
                     break;
                 } catch (error: any) {
-                    if (error.code === 'permission-denied' && retries < 2) {
+                    // For new users, the document won't exist - treat permission-denied as "new user"
+                    if (error.code === 'permission-denied') {
+                        console.log('⚠️  [AUTH CONTEXT] No existing user document (this is normal for new users)');
+                        existingDoc = null;
+                        break;
+                    }
+                    // For other errors, retry
+                    if (retries < 2) {
                         await new Promise(resolve => setTimeout(resolve, 500 * (retries + 1)));
                         retries++;
                     } else {
@@ -367,19 +364,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 role = existingRole;
             }
 
-            await setDoc(
-                userDocRef,
-                {
+            // Split create vs update to comply with Firestore rules
+            if (!existingDoc || !existingDoc.exists()) {
+                // New user - create document with role
+                await setDoc(userDocRef, {
                     uid: user.uid,
                     email: user.email,
                     displayName: user.displayName,
                     role,
-                    enrolledCourses: existingDoc?.exists() ? (existingDoc.data()?.enrolledCourses ?? []) : [],
-                    createdAt: existingDoc?.exists() ? existingDoc.data()?.createdAt : new Date(),
+                    enrolledCourses: [],
+                    createdAt: new Date(),
                     updatedAt: new Date(),
-                },
-                { merge: true }
-            );
+                });
+                console.log('✅ [AUTH CONTEXT] Created new user document with role:', role);
+            } else {
+                // Existing user - update without modifying role
+                const updateData: any = {
+                    email: user.email,
+                    displayName: user.displayName,
+                    updatedAt: new Date(),
+                };
+                
+                // Only update role if it hasn't changed (Firestore rules block role changes)
+                // This is safe because we already preserve privileged roles above
+                if (existingRole !== role) {
+                    console.log('⚠️  [AUTH CONTEXT] Role changed detected but cannot update via client. Use admin panel.');
+                }
+                
+                await setDoc(userDocRef, updateData, { merge: true });
+                console.log('✅ [AUTH CONTEXT] Updated existing user document');
+            }
 
             const idToken = await user.getIdToken(true); // Force refresh
             // Non-blocking session cookie; role cookie covers middleware

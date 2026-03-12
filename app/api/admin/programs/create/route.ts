@@ -8,6 +8,7 @@ interface CreateProgramRequest {
   fullDescription?: string;
   instructorName: string;
   thumbnail: string;
+  images?: string[];
   programType: 'intensive' | 'weekly' | 'professional';
   category: string;
   difficultyLevel: 'beginner' | 'intermediate' | 'advanced';
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
       fullDescription: body.fullDescription?.trim() || body.shortDescription.trim(),
       instructorName: body.instructorName.trim(),
       thumbnail: body.thumbnail,
+      images: body.images || [body.thumbnail],
       
       // Classification
       programType: body.programType,

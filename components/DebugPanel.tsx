@@ -13,6 +13,14 @@ export function DebugPanel() {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
+    // Helper function to determine log type
+    const getLogType = (message: string): 'info' | 'success' | 'warning' | 'error' => {
+      if (message.includes('✅')) return 'success';
+      if (message.includes('❌')) return 'error';
+      if (message.includes('⚠️')) return 'warning';
+      return 'info';
+    };
+
     // Intercept console.log
     const originalLog = console.log;
     const originalWarn = console.warn;
@@ -25,7 +33,7 @@ export function DebugPanel() {
         setLogs(prev => [...prev, {
           time: new Date().toLocaleTimeString(),
           message,
-          type: message.includes('✅') ? 'success' : message.includes('❌') ? 'error' : message.includes('⚠️') ? 'warning' : 'info'
+          type: getLogType(message)
         }].slice(-20)); // Keep last 20 logs
       }
     };
@@ -37,7 +45,7 @@ export function DebugPanel() {
         setLogs(prev => [...prev, {
           time: new Date().toLocaleTimeString(),
           message,
-          type: 'warning'
+          type: 'warning' as const
         }].slice(-20));
       }
     };
@@ -49,7 +57,7 @@ export function DebugPanel() {
         setLogs(prev => [...prev, {
           time: new Date().toLocaleTimeString(),
           message,
-          type: 'error'
+          type: 'error' as const
         }].slice(-20));
       }
     };
