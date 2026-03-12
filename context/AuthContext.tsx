@@ -67,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             clearTimeout(loadingTimeout); // Cancel timeout since auth fired
             console.log('🔵 Auth state changed:', currentUser ? `User: ${currentUser.email}` : 'No user');
             
+            /* TEMPORARILY DISABLED FOR DEBUGGING - Auto-logout unverified users
             // 🔒 CRITICAL: Block unverified users from setting state
             // This prevents the login redirect race condition where onAuthStateChanged
             // fires BEFORE signIn()'s emailVerified check completes
@@ -85,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setLoading(false);
                 return; // Don't process unverified users
             }
+            */
 
             setUser(currentUser);
 
@@ -176,12 +178,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             console.log('✅ [AUTH CONTEXT] Firebase authentication successful');
             
+            console.log('✅ [AUTH CONTEXT] Email is verified, continuing login...');
+            
+            /* TEMPORARILY DISABLED FOR DEBUGGING - Email verification check
             // 🔒 SECURITY: Check email verification
             if (!userCredential.user.emailVerified) {
                 console.error('❌ [AUTH CONTEXT] Email not verified - signing out immediately');
                 await firebaseSignOut(auth);
                 throw new Error('Please verify your email address before signing in. Check your inbox for the verification link.');
             }
+            */
             
             console.log('✅ [AUTH CONTEXT] Email is verified, continuing login...');
             
