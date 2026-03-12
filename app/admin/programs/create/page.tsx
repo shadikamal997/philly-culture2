@@ -47,6 +47,34 @@ export default function CreateProgram() {
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  const testAuth = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        toast.error('❌ No user logged in. Please refresh the page.');
+        return;
+      }
+      
+      toast.loading('Testing authentication...', { id: 'auth-test' });
+      const token = await user.getIdToken(true);
+      
+      const response = await fetch('/api/admin/programs/create', {
+        method: 'OPTIONS',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok || response.status === 405) {
+        toast.success('✅ Authentication working! Email: ' + user.email, { id: 'auth-test' });
+      } else {
+        toast.error('❌ Auth test failed: ' + response.status, { id: 'auth-test' });
+      }
+    } catch (error: any) {
+      toast.error('❌ Auth error: ' + error.message, { id: 'auth-test' });
+    }
+  };
+
   const handleAddImageUrl = () => {
     if (imageUrls.length >= 5) {
       toast.error("Maximum 5 images allowed");
@@ -120,10 +148,19 @@ export default function CreateProgram() {
       setUploadProgress(50);
       const user = auth.currentUser;
       if (!user) {
-        throw new Error('Not authenticated');
+        console.error('[Create Program] No authenticated user found');
+        throw new Error('Not authenticated. Please refresh the page and try again.');
       }
       
-      const idToken = await user.getIdToken(true); // Force refresh to get valid token
+      console.log('[Create Program] Getting fresh token for user:', user.email);
+      let idToken: string;
+      try {
+        idToken = await user.getIdToken(true); // Force refresh to get valid token
+        console.log('[Create Program] Token obtained successfully');
+      } catch (tokenError) {
+        console.error('[Create Program] Failed to get token:', tokenError);
+        throw new Error('Failed to get authentication token. Please refresh and try again.');
+      }
 
       // 📦 STEP 3: Prepare program data
       const programData = {
@@ -160,6 +197,7 @@ export default function CreateProgram() {
       
       // 🚀 STEP 4: Call backend API
       setUploadProgress(70);
+      console.log('[Create Program] Sending request to API...');
       const response = await fetch('/api/admin/programs/create', {
         method: 'POST',
         headers: {
@@ -173,6 +211,7 @@ export default function CreateProgram() {
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('[Create Program] API Error:', errorData);
         
         // Handle validation errors (array of error messages)
         if (errorData.details && Array.isArray(errorData.details)) {
@@ -180,10 +219,12 @@ export default function CreateProgram() {
           throw new Error(`Validation failed:\n• ${errorMessage}`);
         }
         
-        throw new Error(errorData.error || 'Failed to create program');
+        // Show specific error from server
+        throw new Error(errorData.error || `Server error: ${response.status}`);
       }
 
       const result = await response.json();
+      console.log('[Create Program] Success:', result);
       
       setUploadProgress(100);
       toast.success(`✅ ${result.message}`, { id: loadingToast });
@@ -208,8 +249,19 @@ export default function CreateProgram() {
       <Toaster position="top-center" />
       <main className="max-w-4xl mx-auto px-6 py-16">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Create New Program</h1>
-          <p className="text-gray-600 dark:text-gray-400">Fill in the details below to create a new educational program</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Create New Program</h1>
+              <p className="text-gray-600 dark:text-gray-400">Fill in the details below to create a new educational program</p>
+            </div>
+            <button
+              type="button"
+              onClick={testAuth}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm"
+            >
+              🔐 Test Auth
+            </button>
+          </div>
         </div>
 
         {/* Required Fields Notice */}
