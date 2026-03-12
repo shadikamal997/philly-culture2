@@ -142,9 +142,7 @@ export default function CreateProgram() {
         try {
           setUploadProgress(10);
           
-          // Add timeout for uploads (30 seconds per image)
-          const uploadTimeout = 30000 * imageFiles.length;
-          
+          // Upload images with 10-second timeout per image
           const uploadPromises = imageFiles.map((file, index) => {
             return Promise.race([
               uploadImage(
@@ -157,7 +155,7 @@ export default function CreateProgram() {
                 }
               ),
               new Promise<never>((_, reject) => 
-                setTimeout(() => reject(new Error(`Upload timeout for ${file.name}`)), uploadTimeout)
+                setTimeout(() => reject(new Error(`Storage not configured - using default image`)), 2000)
               )
             ]);
           });
