@@ -59,43 +59,51 @@ export default async function ProgramsPage() {
   const isAdmin = await checkIsAdmin();
 
   return (
-    <main className="max-w-6xl mx-auto px-6 py-16">
-      <div className="mb-12">
-        <h1 className="text-3xl font-bold mb-4">All Programs</h1>
-        <p className="text-gray-600">
-          Browse our complete collection of culinary programs
-        </p>
-      </div>
+    <main className="min-h-screen">
+      {/* Hero Section */}
+      <section className="bg-gradient-to-r from-amber-50 to-orange-50 py-20">
+        <div className="max-w-6xl mx-auto px-6">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 text-gray-900">
+            Our Programs
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-700 max-w-3xl">
+            Transform Your Culinary Skills with Expert-Led Programs
+          </p>
+        </div>
+      </section>
 
-      {programs.length > 0 ? (
-        <div className="grid md:grid-cols-3 gap-6">
+      {/* Programs Grid Section */}
+      <section className="max-w-6xl mx-auto px-6 py-16">
+
+        {programs.length > 0 ? (
+          <div className="grid md:grid-cols-3 gap-8">
           {programs.map((program: any) => (
             <Link
               key={program.id}
               href={`/programs/${program.slug}`}
-              className="border rounded-lg hover:shadow-lg transition-all overflow-hidden"
+              className="bg-white border border-gray-200 rounded-xl hover:shadow-2xl transition-all overflow-hidden group"
             >
               {program.thumbnail && (
-                <div className="h-48 bg-gray-200 overflow-hidden">
+                <div className="h-56 bg-gray-200 overflow-hidden">
                   <img
                     src={program.thumbnail}
                     alt={program.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                   />
                 </div>
               )}
               <div className="p-6">
                 <div className="mb-3">
-                  <span className="inline-block bg-red-100 text-red-600 text-xs font-semibold px-3 py-1 rounded-full uppercase">
+                  <span className="inline-block bg-amber-100 text-amber-700 text-xs font-semibold px-3 py-1 rounded-full uppercase">
                     {program.programType || "Course"}
                   </span>
                 </div>
-                <h2 className="font-bold text-xl mb-2">{program.title}</h2>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                <h2 className="font-bold text-2xl mb-3 text-gray-900 group-hover:text-amber-600 transition-colors">{program.title}</h2>
+                <p className="text-gray-600 mb-4 line-clamp-2 leading-relaxed">
                   {program.shortDescription || "Learn professional cooking techniques"}
                 </p>
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <span className="text-2xl font-bold text-red-600">
+                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                  <span className="text-3xl font-bold text-amber-600">
                     ${program.basePrice}
                   </span>
                   {program.totalHours && (
@@ -112,20 +120,22 @@ export default async function ProgramsPage() {
               </div>
             </Link>
           ))}
-        </div>
-      ) : (
-        <div className="text-center py-12 border rounded-lg bg-gray-50">
-          <p className="text-gray-600 mb-4">No programs available yet.</p>
-          {isAdmin && (
-            <Link
-              href="/admin/programs/create"
-              className="text-red-600 hover:underline font-semibold"
-            >
-              Create your first program (Admin)
-            </Link>
-          )}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div className="text-center py-20 border-2 border-dashed rounded-xl bg-gray-50">
+            <div className="text-6xl mb-4">📚</div>
+            <p className="text-xl text-gray-600 mb-6">No programs available yet.</p>
+            {isAdmin && (
+              <Link
+                href="/admin/programs/create"
+                className="inline-block bg-amber-600 text-white px-6 py-3 rounded-lg hover:bg-amber-700 transition-colors font-semibold"
+              >
+                Create Your First Program (Admin)
+              </Link>
+            )}
+          </div>
+        )}
+      </section>
     </main>
   );
 }

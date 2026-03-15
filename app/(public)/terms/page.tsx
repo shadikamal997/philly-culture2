@@ -7,22 +7,27 @@ export const metadata: Metadata = {
 
 export default function TermsOfServicePage() {
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
-      <div className="max-w-4xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-          Terms of Service
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8">
-          Last Updated: March 5, 2026
-        </p>
+    <div className="min-h-screen bg-white">
+      {/* Hero Section */}
+      <section className="bg-gradient-to-r from-amber-50 to-orange-50 py-20">
+        <div className="max-w-6xl mx-auto px-6">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 text-gray-900">
+            Terms of Service
+          </h1>
+          <p className="text-xl text-gray-700">
+            Last Updated: March 5, 2026
+          </p>
+        </div>
+      </section>
 
-        <div className="prose dark:prose-invert max-w-none">
+      <div className="max-w-4xl mx-auto px-6 py-16">
+        <div className="prose max-w-none">
           {/* Introduction */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               1. Agreement to Terms
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               By accessing or using Philly Culture's website, online academy, or purchasing our products,
               you agree to be bound by these Terms of Service and all applicable laws and regulations.
               If you do not agree with any of these terms, you are prohibited from using this site.
@@ -31,10 +36,10 @@ export default function TermsOfServicePage() {
 
           {/* Definitions */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               2. Definitions
             </h2>
-            <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2">
+            <ul className="list-disc pl-6 text-gray-700 space-y-2">
               <li><strong>"Service"</strong> refers to the Philly Culture website, online academy, and all related services.</li>
               <li><strong>"Products"</strong> includes both physical merchandise and digital courses.</li>
               <li><strong>"User"</strong> refers to anyone who accesses or uses our Service.</li>
@@ -44,13 +49,13 @@ export default function TermsOfServicePage() {
 
           {/* Account Registration */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               3. Account Registration
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               To access certain features, you must create an account. You agree to:
             </p>
-            <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2">
+            <ul className="list-disc pl-6 text-gray-700 space-y-2">
               <li>Provide accurate, current, and complete information</li>
               <li>Maintain and promptly update your account information</li>
               <li>Maintain the security of your password</li>
@@ -61,10 +66,10 @@ export default function TermsOfServicePage() {
 
           {/* Purchases and Payments */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               4. Purchases and Payments
             </h2>
-            <div className="space-y-4 text-gray-700 dark:text-gray-300">
+            <div className="space-y-4 text-gray-700">
               <p>
                 <strong>4.1 Pricing:</strong> All prices are in US Dollars and include applicable sales tax.
                 Prices are subject to change without notice.
@@ -86,10 +91,10 @@ export default function TermsOfServicePage() {
 
           {/* Course Access and Digital Products */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               5. Course Access and Digital Products
             </h2>
-            <div className="space-y-4 text-gray-700 dark:text-gray-300">
+            <div className="space-y-4 text-gray-700">
               <p>
                 <strong>5.1 License:</strong> Upon purchase, you receive a non-exclusive, non-transferable
                 license to access course content for personal use only.
@@ -112,10 +117,10 @@ export default function TermsOfServicePage() {
 
           {/* Shipping and Delivery */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               6. Shipping and Delivery
             </h2>
-            <div className="space-y-4 text-gray-700 dark:text-gray-300">
+            <div className="space-y-4 text-gray-700">
               <p>
                 <strong>6.1 Shipping Costs:</strong> Calculated based on destination, weight, and selected shipping method.
               </p>
@@ -134,10 +139,10 @@ export default function TermsOfServicePage() {
 
           {/* Refunds and Returns */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               7. Refunds and Returns
             </h2>
-            <div className="space-y-4 text-gray-700 dark:text-gray-300">
+            <div className="space-y-4 text-gray-700">
               <p>
                 <strong>7.1 Physical Products:</strong> May be returned within 30 days of delivery in original condition.
                 Shipping costs are non-refundable.
@@ -156,10 +161,10 @@ export default function TermsOfServicePage() {
 
           {/* Intellectual PropertyIntellectual Property */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               8. Intellectual Property
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               All content, including but not limited to text, graphics, logos, images, videos, and course materials,
               is the property of Philly Culture and protected by copyright, trademark, and other intellectual property laws.
               Unauthorized use is strictly prohibited.
@@ -168,13 +173,13 @@ export default function TermsOfServicePage() {
 
           {/* User Conduct */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               9. Prohibited Activities
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               You agree not to:
             </p>
-            <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2">
+            <ul className="list-disc pl-6 text-gray-700 space-y-2">
               <li>Violate any applicable laws or regulations</li>
               <li>Infringe upon intellectual property rights</li>
               <li>Transmit harmful code or viruses</li>
@@ -187,10 +192,10 @@ export default function TermsOfServicePage() {
 
           {/* Disclaimers */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               10. Disclaimers
             </h2>
-            <div className="space-y-4 text-gray-700 dark:text-gray-300">
+            <div className="space-y-4 text-gray-700">
               <p>
                 THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER
                 EXPRESS OR IMPLIED. WE DO NOT WARRANT THAT THE SERVICE WILL BE UNINTERRUPTED, SECURE, OR ERROR-FREE.
@@ -204,10 +209,10 @@ export default function TermsOfServicePage() {
 
           {/* Limitation of Liability */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               11. Limitation of Liability
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               TO THE MAXIMUM EXTENT PERMITTED BY LAW, PHILLY CULTURE SHALL NOT BE LIABLE FOR ANY INDIRECT,
               INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES,
               WHETHER INCURRED DIRECTLY OR INDIRECTLY.
@@ -216,10 +221,10 @@ export default function TermsOfServicePage() {
 
           {/* Governing Law */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               12. Governing Law
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               These Terms shall be governed by and construed in accordance with the laws of the Commonwealth
               of Pennsylvania, United States, without regard to its conflict of law provisions.
             </p>
@@ -227,10 +232,10 @@ export default function TermsOfServicePage() {
 
           {/* Changes to Terms */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               13. Changes to Terms
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               We reserve the right to modify these Terms at any time. Changes will be effective immediately
               upon posting. Your continued use of the Service after changes constitutes acceptance of the
               modified Terms.
@@ -239,17 +244,19 @@ export default function TermsOfServicePage() {
 
           {/* Contact Information */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-3xl font-semibold text-gray-900 mb-6">
               14. Contact Information
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-6">
               For questions about these Terms, please contact us at:
             </p>
-            <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>Philly Culture</strong><br />
-                Email: legal@phillyculture.com<br />
-                Website: www.phillyculture.com/contact
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-8 rounded-xl border-2 border-amber-200">
+              <p className="text-gray-900 leading-relaxed">
+                <strong className="text-lg">Philly Culture Academy</strong><br />
+                <span className="text-gray-700">
+                Email: <a href="mailto:legal@phillyculture.com" className="text-amber-600 hover:text-amber-700 font-semibold">legal@phillyculture.com</a><br />
+                Website: <a href="/contact" className="text-amber-600 hover:text-amber-700 font-semibold">www.phillyculture.com/contact</a>
+                </span>
               </p>
             </div>
           </section>

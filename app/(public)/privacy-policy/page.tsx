@@ -7,22 +7,27 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950">
-      <div className="max-w-4xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-          Privacy Policy
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8">
-          Last Updated: March 5, 2026
-        </p>
+    <div className="min-h-screen bg-white">
+      {/* Hero Section */}
+      <section className="bg-gradient-to-r from-amber-50 to-orange-50 py-20">
+        <div className="max-w-6xl mx-auto px-6">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 text-gray-900">
+            Privacy Policy
+          </h1>
+          <p className="text-xl text-gray-700">
+            Last Updated: March 5, 2026
+          </p>
+        </div>
+      </section>
 
-        <div className="prose dark:prose-invert max-w-none">
+      <div className="max-w-4xl mx-auto px-6 py-16">
+        <div className="prose max-w-none">
           {/* Introduction */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               1. Introduction
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               Philly Culture ("we," "our," or "us") respects your privacy and is committed to protecting your
               personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard
               your information when you visit our website and use our services.
@@ -31,13 +36,13 @@ export default function PrivacyPolicyPage() {
 
           {/* Information We Collect */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               2. Information We Collect
             </h2>
             
-            <div className="space-y-6 text-gray-700 dark:text-gray-300">
+            <div className="space-y-6 text-gray-700">
               <div>
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                <h3 className="text-xl font-semibold text-gray-800 mb-3">
                   2.1 Information You Provide
                 </h3>
                 <p className="mb-2">We collect information you voluntarily provide when you:</p>
@@ -52,7 +57,7 @@ export default function PrivacyPolicyPage() {
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                <h3 className="text-xl font-semibold text-gray-800 mb-3">
                   2.2 Automatically Collected Information
                 </h3>
                 <p className="mb-2">When you access our Service, we automatically collect:</p>
@@ -65,7 +70,7 @@ export default function PrivacyPolicyPage() {
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                <h3 className="text-xl font-semibold text-gray-800 mb-3">
                   2.3 Third-Party Information
                 </h3>
                 <p className="mb-2">We may receive information from third parties:</p>
@@ -80,13 +85,13 @@ export default function PrivacyPolicyPage() {
 
           {/* How We Use Your Information */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               3. How We Use Your Information
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               We use your information to:
             </p>
-            <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2">
+            <ul className="list-disc pl-6 text-gray-700 space-y-2">
               <li>Process and fulfill your orders</li>
               <li>Provide access to purchased courses and content</li>
               <li>Send order confirmations and shipping updates</li>
@@ -101,13 +106,13 @@ export default function PrivacyPolicyPage() {
 
           {/* Legal Basis for Processing */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               4. Legal Basis for Processing (GDPR)
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               If you are from the European Economic Area (EEA), our legal basis for processing your information includes:
             </p>
-            <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2">
+            <ul className="list-disc pl-6 text-gray-700 space-y-2">
               <li><strong>Contract Performance:</strong> Processing necessary to fulfill our contract with you</li>
               <li><strong>Consent:</strong> You have given explicit permission for specific processing</li>
               <li><strong>Legitimate Interests:</strong> Processing necessary for our legitimate business interests</li>
@@ -117,10 +122,10 @@ export default function PrivacyPolicyPage() {
 
           {/* Information Sharing */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               5. How We Share Your Information
             </h2>
-            <div className="space-y-4 text-gray-700 dark:text-gray-300">
+            <div className="space-y-4 text-gray-700">
               <p>We may share your information with:</p>
               
               <div>
@@ -152,10 +157,10 @@ export default function PrivacyPolicyPage() {
 
           {/* Cookies and Tracking */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               6. Cookies and Tracking Technologies
             </h2>
-            <div className="space-y-4 text-gray-700 dark:text-gray-300">
+            <div className="space-y-4 text-gray-700">
               <p>We use cookies and similar technologies to:</p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>Maintain your session and keep you logged in</li>
@@ -172,10 +177,10 @@ export default function PrivacyPolicyPage() {
 
           {/* Data Security */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               7. Data Security
             </h2>
-            <div className="space-y-4 text-gray-700 dark:text-gray-300">
+            <div className="space-y-4 text-gray-700">
               <p>
                 We implement appropriate technical and organizational security measures to protect your information, including:
               </p>
@@ -195,29 +200,29 @@ export default function PrivacyPolicyPage() {
 
           {/* Data Retention */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               8. Data Retention
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               We retain your personal information for as long as necessary to:
             </p>
-            <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2">
+            <ul className="list-disc pl-6 text-gray-700 space-y-2">
               <li>Provide you with our services</li>
               <li>Comply with legal obligations (e.g., tax records for 7 years)</li>
               <li>Resolve disputes and enforce agreements</li>
               <li>Maintain account records while your account is active</li>
             </ul>
-            <p className="text-gray-700 dark:text-gray-300 mt-4">
+            <p className="text-gray-700 mt-4">
               You may request deletion of your account and personal data at any time, subject to legal retention requirements.
             </p>
           </section>
 
           {/* Your Rights */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               9. Your Privacy Rights
             </h2>
-            <div className="space-y-4 text-gray-700 dark:text-gray-300">
+            <div className="space-y-4 text-gray-700">
               <p>Depending on your location, you may have the following rights:</p>
               <ul className="list-disc pl-6 space-y-2">
                 <li><strong>Access:</strong> Request a copy of your personal information</li>
@@ -237,13 +242,13 @@ export default function PrivacyPolicyPage() {
 
           {/* California Privacy Rights */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               10. California Privacy Rights (CCPA)
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               California residents have additional rights under the California Consumer Privacy Act (CCPA):
             </p>
-            <ul className="list-disc pl-6 text-gray-700 dark:text-gray-300 space-y-2">
+            <ul className="list-disc pl-6 text-gray-700 space-y-2">
               <li>Right to know what personal information is collected, used, shared, or sold</li>
               <li>Right to delete personal information</li>
               <li>Right to opt-out of sale of personal information (we do not sell your information)</li>
@@ -253,10 +258,10 @@ export default function PrivacyPolicyPage() {
 
           {/* Children's Privacy */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               11. Children's Privacy
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               Our Service is not intended for children under 13. We do not knowingly collect personal
               information from children under 13. If you believe we have collected information from a
               child under 13, please contact us immediately.
@@ -265,10 +270,10 @@ export default function PrivacyPolicyPage() {
 
           {/* International Data Transfers */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               12. International Data Transfers
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               Your information may be transferred to and processed in countries other than your country
               of residence. These countries may have different data protection laws. By using our Service,
               you consent to such transfers.
@@ -277,10 +282,10 @@ export default function PrivacyPolicyPage() {
 
           {/* Changes to Privacy Policy */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               13. Changes to This Privacy Policy
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-4">
               We may update this Privacy Policy from time to time. We will notify you of significant
               changes by posting the new policy on this page and updating the "Last Updated" date.
               Your continued use of the Service after changes constitutes acceptance of the updated policy.
@@ -289,20 +294,22 @@ export default function PrivacyPolicyPage() {
 
           {/* Contact Us */}
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+            <h2 className="text-3xl font-semibold text-gray-900 mb-6">
               14. Contact Us
             </h2>
-            <p className="text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-gray-700 mb-6">
               For questions or concerns about this Privacy Policy or our data practices:
             </p>
-            <div className="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>Philly Culture</strong><br />
-                Email: privacy@phillyculture.com<br />
-                Website: www.phillyculture.com/contact<br />
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-8 rounded-xl border-2 border-amber-200">
+              <p className="text-gray-900 leading-relaxed">
+                <strong className="text-lg">Philly Culture Academy</strong><br />
+                <span className="text-gray-700">
+                Email: <a href="mailto:privacy@phillyculture.com" className="text-amber-600 hover:text-amber-700 font-semibold">privacy@phillyculture.com</a><br />
+                Website: <a href="/contact" className="text-amber-600 hover:text-amber-700 font-semibold">www.phillyculture.com/contact</a><br />
                 <br />
-                <em>For EU/EEA residents, you also have the right to lodge a complaint with your
+                <em className="text-gray-600">For EU/EEA residents, you also have the right to lodge a complaint with your
                 local data protection authority.</em>
+                </span>
               </p>
             </div>
           </section>
