@@ -58,17 +58,28 @@ export default function CreateProgram() {
       toast.loading('Testing authentication...', { id: 'auth-test' });
       const token = await user.getIdToken(true);
       
-      const response = await fetch('/api/admin/programs/create', {
-        method: 'OPTIONS',
+      // Call the diagnostic endpoint
+      const response = await fetch('/api/admin/test-auth', {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
       
-      if (response.ok || response.status === 405) {
-        toast.success('✅ Authentication working! Email: ' + user.email, { id: 'auth-test' });
+      const data = await response.json();
+      console.log('[Auth Test] Full response:', data);
+      
+      if (data.success) {
+        toast.success('✅ ' + data.message + '\nRole: ' + data.diagnostics.role, { 
+          id: 'auth-test',
+          duration: 5000,
+        });
       } else {
-        toast.error('❌ Auth test failed: ' + response.status, { id: 'auth-test' });
+        toast.error('❌ ' + data.error + '\n' + (data.details || ''), { 
+          id: 'auth-test',
+          duration: 6000,
+        });
+        console.error('[Auth Test] Diagnostics:', data.diagnostics);
       }
     } catch (error: any) {
       toast.error('❌ Auth error: ' + error.message, { id: 'auth-test' });
