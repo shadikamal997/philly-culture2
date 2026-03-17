@@ -3,10 +3,37 @@
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/firebase/firebaseClient';
 
 export default function DashboardPage() {
-  const { userData } = useAuth();
+  const { user, userData } = useAuth();
   const pathname = usePathname();
+  const [orderCount, setOrderCount] = useState(0);
+
+  useEffect(() => {
+    const fetchEnrollmentCount = async () => {
+      if (!user?.email) {
+        setOrderCount(0);
+        return;
+      }
+
+      try {
+        const enrollmentsQuery = query(
+          collection(db, 'enrollments'),
+          where('userEmail', '==', user.email)
+        );
+        const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
+        setOrderCount(enrollmentsSnapshot.size);
+      } catch (error) {
+        console.error('Failed to load enrollment count:', error);
+        setOrderCount(0);
+      }
+    };
+
+    fetchEnrollmentCount();
+  }, [user?.email]);
 
   const navigation = [
     {
@@ -118,7 +145,7 @@ export default function DashboardPage() {
             <div className="text-sm text-gray-600 dark:text-gray-400">Certificates Earned</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">0</div>
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">{orderCount}</div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Total Orders</div>
           </div>
         </div>
