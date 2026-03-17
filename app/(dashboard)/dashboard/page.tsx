@@ -11,6 +11,7 @@ export default function DashboardPage() {
   const { user, userData } = useAuth();
   const pathname = usePathname();
   const [orderCount, setOrderCount] = useState(0);
+  const [programEnrollmentCount, setProgramEnrollmentCount] = useState(0);
 
   useEffect(() => {
     const fetchEnrollmentCount = async () => {
@@ -25,10 +26,14 @@ export default function DashboardPage() {
           where('userEmail', '==', user.email)
         );
         const enrollmentsSnapshot = await getDocs(enrollmentsQuery);
-        setOrderCount(enrollmentsSnapshot.size);
+        const enrollmentDocs = enrollmentsSnapshot.docs.map((doc) => doc.data() as any);
+        const activeEnrollments = enrollmentDocs.filter((enrollment) => enrollment.status !== 'refunded');
+        setOrderCount(enrollmentDocs.length);
+        setProgramEnrollmentCount(activeEnrollments.length);
       } catch (error) {
         console.error('Failed to load enrollment count:', error);
         setOrderCount(0);
+        setProgramEnrollmentCount(0);
       }
     };
 
@@ -136,7 +141,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
             <div className="text-3xl font-bold text-red-600 dark:text-red-400 mb-2">
-              {userData?.enrolledCourses?.length || 0}
+              {(userData?.enrolledCourses?.length || 0) + programEnrollmentCount}
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-400">Enrolled Courses</div>
           </div>

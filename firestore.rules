@@ -87,9 +87,9 @@ service cloud.firestore {
     // ENROLLMENTS (Student Purchases)
     // =============================
     match /enrollments/{enrollmentId} {
-      // Users can only read their own enrollments
+      // Users can read their own enrollments; admins can read all
       allow read: if isAuthenticated() 
-                  && resource.data.userEmail == request.auth.token.email;
+                  && (resource.data.userEmail == request.auth.token.email || isAdmin());
       
       // Only backend creates enrollments (via webhook)
       allow create: if false;
