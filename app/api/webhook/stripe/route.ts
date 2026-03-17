@@ -39,6 +39,65 @@ export async function POST(req: Request) {
       processed: false,
     });
 
+    // Handle program checkout completion (program enrollments)
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const metadata = session.metadata || {};
+
+      const programId = metadata.programId;
+      const userEmail = metadata.userEmail || session.customer_details?.email;
+
+      if (programId && userEmail) {
+        const existingEnrollment = await db
+          .collection('enrollments')
+          .where('stripeSessionId', '==', session.id)
+          .limit(1)
+          .get();
+
+        if (existingEnrollment.empty) {
+          const programSnap = await db.collection('programs').doc(programId).get();
+          const programData = programSnap.exists ? programSnap.data() : null;
+
+          let accessExpiresAt: Date | null = null;
+          const accessDuration = Number(programData?.accessDuration || 0);
+          if (accessDuration > 0) {
+            accessExpiresAt = new Date(Date.now() + accessDuration * 24 * 60 * 60 * 1000);
+          }
+
+          await db.collection('enrollments').add({
+            userId: userEmail,
+            userEmail,
+            customerName: session.customer_details?.name || null,
+            programId,
+            programSlug: metadata.programSlug || null,
+            programTitle: metadata.programTitle || programData?.title || null,
+            subtotal: (session.amount_subtotal || 0) / 100,
+            taxAmount: (session.total_details?.amount_tax || 0) / 100,
+            totalAmount: (session.amount_total || 0) / 100,
+            currency: session.currency || 'usd',
+            state: session.customer_details?.address?.state || null,
+            city: session.customer_details?.address?.city || null,
+            country: session.customer_details?.address?.country || 'US',
+            postalCode: session.customer_details?.address?.postal_code || null,
+            stripeSessionId: session.id,
+            stripePaymentIntentId:
+              typeof session.payment_intent === 'string' ? session.payment_intent : null,
+            stripeCustomerId: typeof session.customer === 'string' ? session.customer : null,
+            status: 'active',
+            enrolledAt: new Date(),
+            accessExpiresAt,
+            unlockType: programData?.unlockType || 'instant',
+            startDate: programData?.isCohort ? programData?.startDate || null : null,
+            completionPercent: 0,
+            certificateIssued: false,
+            certificateEligible: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+      }
+    }
+
     // Handle successful payment
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
@@ -48,113 +107,112 @@ export async function POST(req: Request) {
       const items = metadata?.items ? JSON.parse(metadata.items) : [];
       
       if (!userId || !items.length) {
-        console.error('Webhook Error: Missing userId or items in payment intent metadata');
-        return NextResponse.json({ error: 'Missing metadata' }, { status: 400 });
-      }
+        console.log('ℹ️ Skipping payment_intent.succeeded without cart metadata');
+      } else {
+        // Create Order in Firestore
+        const orderRef = db.collection('orders').doc();
+        const orderId = orderRef.id;
 
-      // Create Order in Firestore
-      const orderRef = db.collection('orders').doc();
-      const orderId = orderRef.id;
+        const orderData = {
+          userId,
+          items,
+          subtotal: Number(metadata.subtotal) || 0,
+          taxAmount: Number(metadata.taxAmount) || 0,
+          taxRate: Number(metadata.taxRate) || 0,
+          state: metadata.state || '',
+          total: paymentIntent.amount / 100, // Convert cents to dollars
+          stripePaymentIntentId: paymentIntent.id,
+          status: 'paid',
+          shippingAddress: metadata.shippingAddress ? JSON.parse(metadata.shippingAddress) : null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
 
-      const orderData = {
-        userId,
-        items,
-        subtotal: Number(metadata.subtotal) || 0,
-        taxAmount: Number(metadata.taxAmount) || 0,
-        taxRate: Number(metadata.taxRate) || 0,
-        state: metadata.state || '',
-        total: paymentIntent.amount / 100, // Convert cents to dollars
-        stripePaymentIntentId: paymentIntent.id,
-        status: 'paid',
-        shippingAddress: metadata.shippingAddress ? JSON.parse(metadata.shippingAddress) : null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+        await orderRef.set(orderData);
+        // Order created successfully
 
-      await orderRef.set(orderData);
-      // Order created successfully
-
-      // Process Items (Unlock courses, reduce inventory using transactions)
-      for (const item of items) {
-        if (item.type === 'course') {
-          // Add course to user's enrolled courses
-          const userRef = db.collection('users').doc(userId);
-          await userRef.update({
-            enrolledCourses: FieldValue.arrayUnion(item.id)
-          });
-          // Course unlocked for user
-
-          // Send enrollment email
-          try {
-            const userSnap = await userRef.get();
-            const userData = userSnap.data();
-            if (userData?.email) {
-              const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-              await emailService.sendEnrollmentConfirmation({
-                recipientEmail: userData.email,
-                recipientName: userData.name || 'Student',
-                courseName: item.title,
-                courseUrl: `${siteUrl}/course/${item.id}`,
-                enrollmentDate: new Date(),
-              });
-              // Enrollment email sent
-            }
-          } catch (emailError) {
-            console.error('❌ Failed to send enrollment email:', emailError);
-          }
-
-        } else if (item.type === 'tool') {
-          // Deduct inventory using transaction to prevent race conditions
-          const toolRef = db.collection('tools').doc(item.id);
-          
-          await db.runTransaction(async (transaction) => {
-            const toolDoc = await transaction.get(toolRef);
-            if (!toolDoc.exists) {
-              throw new Error(`Tool ${item.id} not found`);
-            }
-            
-            const currentInventory = toolDoc.data()?.inventory || 0;
-            const newInventory = Math.max(0, currentInventory - item.quantity);
-            
-            transaction.update(toolRef, {
-              inventory: newInventory,
-              updatedAt: new Date(),
+        // Process Items (Unlock courses, reduce inventory using transactions)
+        for (const item of items) {
+          if (item.type === 'course') {
+            // Add course to user's enrolled courses
+            const userRef = db.collection('users').doc(userId);
+            await userRef.update({
+              enrolledCourses: FieldValue.arrayUnion(item.id)
             });
+            // Course unlocked for user
+
+            // Send enrollment email
+            try {
+              const userSnap = await userRef.get();
+              const userData = userSnap.data();
+              if (userData?.email) {
+                const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+                await emailService.sendEnrollmentConfirmation({
+                  recipientEmail: userData.email,
+                  recipientName: userData.name || 'Student',
+                  courseName: item.title,
+                  courseUrl: `${siteUrl}/course/${item.id}`,
+                  enrollmentDate: new Date(),
+                });
+                // Enrollment email sent
+              }
+            } catch (emailError) {
+              console.error('❌ Failed to send enrollment email:', emailError);
+            }
+
+          } else if (item.type === 'tool') {
+            // Deduct inventory using transaction to prevent race conditions
+            const toolRef = db.collection('tools').doc(item.id);
             
-            // Inventory updated
-          });
+            await db.runTransaction(async (transaction) => {
+              const toolDoc = await transaction.get(toolRef);
+              if (!toolDoc.exists) {
+                throw new Error(`Tool ${item.id} not found`);
+              }
+              
+              const currentInventory = toolDoc.data()?.inventory || 0;
+              const newInventory = Math.max(0, currentInventory - item.quantity);
+              
+              transaction.update(toolRef, {
+                inventory: newInventory,
+                updatedAt: new Date(),
+              });
+              
+              // Inventory updated
+            });
+          }
         }
-      }
 
-      // Send order confirmation email
-      try {
-        const userRef = db.collection('users').doc(userId);
-        const userSnap = await userRef.get();
-        const userData = userSnap.data();
-        
-        if (userData?.email) {
-          const itemsForEmail = items.map((item: any) => ({
-            name: item.title,
-            quantity: item.quantity,
-            price: item.price,
-          }));
+        // Send order confirmation email
+        try {
+          const userRef = db.collection('users').doc(userId);
+          const userSnap = await userRef.get();
+          const userData = userSnap.data();
+          
+          if (userData?.email) {
+            const itemsForEmail = items.map((item: any) => ({
+              name: item.title,
+              quantity: item.quantity,
+              price: item.price,
+            }));
 
-          await emailService.sendOrderConfirmation({
-            recipientEmail: userData.email,
-            recipientName: userData.name || 'Customer',
-            orderId: orderId,
-            orderDate: new Date(),
-            items: itemsForEmail,
-            subtotal: orderData.subtotal,
-            tax: orderData.taxAmount,
-            shipping: 0, // Update if you add shipping calculation
-            total: orderData.total,
-            shippingAddress: orderData.shippingAddress,
-          });
-          // Confirmation email sent
+            await emailService.sendOrderConfirmation({
+              recipientEmail: userData.email,
+              recipientName: userData.name || 'Customer',
+              orderId: orderId,
+              orderDate: new Date(),
+              items: itemsForEmail,
+              subtotal: orderData.subtotal,
+              tax: orderData.taxAmount,
+              shipping: 0, // Update if you add shipping calculation
+              total: orderData.total,
+              shippingAddress: orderData.shippingAddress,
+            });
+            // Confirmation email sent
+          }
+        } catch (emailError) {
+          console.error('❌ Failed to send order confirmation email:', emailError);
         }
-      } catch (emailError) {
-        console.error('❌ Failed to send order confirmation email:', emailError);
       }
     }
 
