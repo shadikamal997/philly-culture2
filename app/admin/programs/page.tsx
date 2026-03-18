@@ -367,6 +367,13 @@ export default function ProgramsPage() {
                       👁️ View
                     </Link>
 
+                    <Link
+                      href={`/admin/programs/${program.id}/edit`}
+                      className="px-4 py-2 rounded-lg font-medium text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors text-center"
+                    >
+                      ✏️ Edit
+                    </Link>
+
                     <button
                       onClick={() => deleteProgram(program.id, program.title)}
                       className="px-4 py-2 rounded-lg font-medium text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
