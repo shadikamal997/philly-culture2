@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 
 interface EnrollButtonProps {
@@ -13,11 +13,14 @@ export default function EnrollButton({ programId, programPrice }: EnrollButtonPr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  console.log('🔵 EnrollButton - Auth State:', { 
-    hasUser: !!user, 
-    userEmail: user?.email,
-    programId 
-  });
+  // Reset loading if browser restores the page from bfcache (user hit Back from Stripe)
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setLoading(false);
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
 
   const handleEnroll = async () => {
     setLoading(true);
