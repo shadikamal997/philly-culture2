@@ -28,26 +28,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Program ID is required" }, { status: 400 });
     }
 
-    if (!userEmail) {
-      return NextResponse.json({ error: "User email is required" }, { status: 400 });
-    }
+    // userEmail is optional — guest checkout is allowed; Stripe will collect it
+    console.log('🔵 Checkout request:', { programId, userEmail: userEmail || '(guest)' });
 
-    console.log('🔵 Checkout request:', { programId, userEmail });
+    // 🔥 PREVENT DUPLICATE PURCHASE — only if we have the email (logged-in users)
+    if (userEmail) {
+      const enrollmentQuery = adminDb
+        .collection("enrollments")
+        .where("programId", "==", programId)
+        .where("userEmail", "==", userEmail);
 
-    // 🔥 PREVENT DUPLICATE PURCHASE - Check existing enrollments
-    const enrollmentQuery = adminDb
-      .collection("enrollments")
-      .where("programId", "==", programId)
-      .where("userEmail", "==", userEmail);
+      const existing = await enrollmentQuery.get();
 
-    const existing = await enrollmentQuery.get();
-
-    if (!existing.empty) {
-      console.log('⚠️  User already enrolled in this program');
-      return NextResponse.json(
-        { error: "Already enrolled in this program" },
-        { status: 400 }
-      );
+      if (!existing.empty) {
+        console.log('⚠️  User already enrolled in this program');
+        return NextResponse.json(
+          { error: "Already enrolled in this program" },
+          { status: 400 }
+        );
+      }
     }
 
     // Fetch program from Firestore using Admin SDK
@@ -73,9 +72,10 @@ export async function POST(req: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
-      automatic_tax: { enabled: true }, // 🔥 US TAX ENABLED - Stripe calculates tax automatically
+      automatic_tax: { enabled: true },
       billing_address_collection: "required",
-      customer_email: userEmail, // Pre-fill customer email
+      // Pre-fill email for logged-in users; guests enter it on Stripe's checkout page
+      ...(userEmail ? { customer_email: userEmail } : {}),
       line_items: [
         {
           price_data: {
