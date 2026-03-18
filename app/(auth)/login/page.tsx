@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import toast, { Toaster } from "react-hot-toast";
-import { DebugPanel } from "@/components/DebugPanel";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -404,7 +403,6 @@ export default function LoginPage() {
           </div>
         </div>
       </main>
-      <DebugPanel />
     </>
   );
 }
