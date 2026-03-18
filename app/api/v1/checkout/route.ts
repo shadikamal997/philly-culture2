@@ -74,8 +74,6 @@ export async function POST(req: NextRequest) {
       mode: "payment",
       automatic_tax: { enabled: true },
       billing_address_collection: "required",
-      // Pre-fill email for logged-in users; guests enter it on Stripe's checkout page
-      ...(userEmail ? { customer_email: userEmail } : {}),
       line_items: [
         {
           price_data: {
