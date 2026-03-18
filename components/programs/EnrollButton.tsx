@@ -16,7 +16,6 @@ export default function EnrollButton({ programId, programPrice }: EnrollButtonPr
   console.log('🔵 EnrollButton - Auth State:', { 
     hasUser: !!user, 
     userEmail: user?.email,
-    authLoading,
     programId 
   });
 

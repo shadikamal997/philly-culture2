@@ -97,7 +97,8 @@ export async function POST(req: NextRequest) {
         programId,
         programSlug: program.slug,
         programTitle: program.title,
-        userEmail, // Store for webhook
+        // Only set userEmail if defined — avoids Stripe storing the string "undefined" for guests
+        ...(userEmail ? { userEmail } : {}),
       },
     });
 
