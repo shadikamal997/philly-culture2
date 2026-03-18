@@ -143,6 +143,22 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
     }
 
+    // =============================
+    // PROGRAM REVIEWS
+    // =============================
+    match /programReviews/{reviewId} {
+      // Anyone can read reviews
+      allow read: if true;
+
+      // Only backend creates reviews (via API route which checks enrollment)
+      allow create: if false;
+
+      // Only backend deletes reviews
+      allow delete: if false;
+
+      allow update: if false;
+    }
+
     match /carts/{userId} {
       allow read, write: if isAuthenticated() && request.auth.uid == userId;
     }

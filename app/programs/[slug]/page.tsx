@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import EnrollButton from "@/components/programs/EnrollButton";
+import ProgramReviews from "@/components/programs/ProgramReviews";
 import { generateCourseSchema } from "@/lib/metadata";
 
 export const revalidate = 3600; // Cache for 1 hour
@@ -162,6 +163,8 @@ export default async function ProgramDetail({
         </div>
       </div>
 
+      {/* Reviews */}
+      <ProgramReviews programId={program.id} programTitle={program.title} />
 
     </main>
     </>

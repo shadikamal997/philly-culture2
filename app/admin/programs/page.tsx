@@ -23,6 +23,8 @@ interface Program {
   totalHours: number;
   createdAt: any;
   slug: string;
+  averageRating?: number;
+  reviewCount?: number;
 }
 
 export default function ProgramsPage() {
@@ -330,6 +332,12 @@ export default function ProgramsPage() {
                           <span className="flex items-center gap-1">
                             <span>📊</span> {program.difficultyLevel}
                           </span>
+                          {typeof program.reviewCount === "number" && program.reviewCount > 0 && (
+                            <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400 font-medium">
+                              <span>⭐</span>{" "}
+                              {program.averageRating?.toFixed(1)} ({program.reviewCount} review{program.reviewCount !== 1 ? "s" : ""})
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
