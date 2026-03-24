@@ -11,10 +11,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   // Redirect admins/owners away from user dashboard to their panel
+  // But allow them to access their personal pages (profile, orders, certificates, addresses)
+  const allowedAdminPages = ['/profile', '/certificates', '/orders', '/addresses'];
   useEffect(() => {
     if (!loading && userData) {
       const role = userData.role;
-      if ((role === 'admin' || role === 'superadmin' || role === 'owner') && pathname !== '/profile') {
+      if ((role === 'admin' || role === 'superadmin' || role === 'owner') && !allowedAdminPages.includes(pathname || '')) {
         window.location.href = '/admin';
       }
     }
