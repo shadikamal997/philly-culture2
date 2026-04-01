@@ -373,6 +373,32 @@ export default function AdminPage() {
               <p className="text-xs text-gray-500 dark:text-gray-400">Security logs</p>
             </div>
           </Link>
+
+          <Link
+            href="/admin/chats"
+            className="flex items-center gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/10 hover:border-orange-300 dark:hover:border-orange-700 transition-all group"
+          >
+            <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center group-hover:bg-orange-200 dark:group-hover:bg-orange-900/50 transition-colors">
+              <span className="text-xl">💬</span>
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-gray-900 dark:text-white">Live Chat</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Student chats</p>
+            </div>
+          </Link>
+
+          <Link
+            href="/admin/sessions"
+            className="flex items-center gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-900/10 hover:border-violet-300 dark:hover:border-violet-700 transition-all group"
+          >
+            <div className="w-12 h-12 bg-violet-100 dark:bg-violet-900/30 rounded-xl flex items-center justify-center group-hover:bg-violet-200 dark:group-hover:bg-violet-900/50 transition-colors">
+              <span className="text-xl">🎥</span>
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-gray-900 dark:text-white">Live Sessions</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Book & manage</p>
+            </div>
+          </Link>
         </div>
       </div>
     </div>
