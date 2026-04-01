@@ -64,6 +64,7 @@ export async function POST(req: Request) {
             accessExpiresAt = new Date(Date.now() + accessDuration * 24 * 60 * 60 * 1000);
           }
 
+          // Create enrollment
           await db.collection('enrollments').add({
             userId: userEmail,
             userEmail,
@@ -94,6 +95,35 @@ export async function POST(req: Request) {
             createdAt: new Date(),
             updatedAt: new Date(),
           });
+
+          // Create chat for student-admin communication
+          try {
+            // Get or find owner/admin user ID
+            const ownerEmail = process.env.NEXT_PUBLIC_OWNER_EMAIL || 'owner@phillycultrue.com';
+            const ownerQuery = await db.collection('users').where('email', '==', ownerEmail).limit(1).get();
+            const ownerId = !ownerQuery.empty ? ownerQuery.docs[0].id : 'owner';
+
+            await db.collection('chats').add({
+              programId,
+              programTitle: metadata.programTitle || programData?.title || 'Program',
+              studentId: userEmail,
+              studentName: session.customer_details?.name || 'Student',
+              studentEmail: userEmail,
+              ownerId,
+              participants: [userEmail, ownerId],
+              lastMessage: null,
+              lastMessageTimestamp: null,
+              unreadCountStudent: 0,
+              unreadCountOwner: 0,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+
+            console.log('✅ Chat created for enrollment:', { programId, userEmail });
+          } catch (chatError) {
+            console.error('❌ Failed to create chat:', chatError);
+            // Don't fail enrollment if chat creation fails
+          }
         }
       }
     }

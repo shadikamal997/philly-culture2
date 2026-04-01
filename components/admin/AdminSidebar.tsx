@@ -20,6 +20,7 @@ export default function AdminSidebar() {
     { name: 'Programs', href: '/admin/programs', icon: '📚' },
     { name: 'Create Program', href: '/admin/programs/create', icon: '➕' },
     { name: 'Students', href: '/admin/students', icon: '👥' },
+    { name: 'Chats', href: '/admin/chats', icon: '💬' },
     { name: 'Orders', href: '/admin/orders', icon: '🛒' },
     { name: 'Analytics', href: '/admin/analytics', icon: '📈' },
     { name: 'Certificates', href: '/admin/certificates', icon: '🎓' },

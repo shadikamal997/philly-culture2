@@ -162,5 +162,44 @@ service cloud.firestore {
     match /carts/{userId} {
       allow read, write: if isAuthenticated() && request.auth.uid == userId;
     }
+
+    // =============================
+    // CHATS (Student-Admin Communication)
+    // =============================
+    match /chats/{chatId} {
+      // Users can read chats they're a participant in
+      allow read: if isAuthenticated() 
+                  && (request.auth.uid in resource.data.participants || isAdmin());
+      
+      // Only backend creates chats (on enrollment)
+      allow create: if false;
+      
+      // Participants can update (for marking as read)
+      allow update: if isAuthenticated() 
+                    && request.auth.uid in resource.data.participants;
+      
+      allow delete: if false;
+    }
+
+    // =============================
+    // MESSAGES (Chat Messages)
+    // =============================
+    match /messages/{messageId} {
+      // Users can read messages in their chats
+      allow read: if isAuthenticated() 
+                  && exists(/databases/$(database)/documents/chats/$(resource.data.chatId))
+                  && (request.auth.uid in get(/databases/$(database)/documents/chats/$(resource.data.chatId)).data.participants || isAdmin());
+      
+      // Users can create messages in their chats
+      allow create: if isAuthenticated() 
+                    && exists(/databases/$(database)/documents/chats/$(request.resource.data.chatId))
+                    && request.auth.uid in get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.participants
+                    && request.resource.data.senderId == request.auth.uid;
+      
+      // Users can update their own messages (for marking as read)
+      allow update: if isAuthenticated();
+      
+      allow delete: if false;
+    }
   }
 }

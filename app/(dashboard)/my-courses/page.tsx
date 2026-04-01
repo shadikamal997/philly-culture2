@@ -5,9 +5,11 @@ import { useEffect, useState } from 'react';
 import { collection, query, documentId, where, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase/firebaseClient';
 import Link from 'next/link';
+import ProgramChatButton from '@/components/chat/ProgramChatButton';
 
 interface LearningItem {
   id: string;
+  programId?: string;
   title: string;
   description: string;
   imageUrl?: string;
@@ -96,6 +98,7 @@ export default function MyCoursesPage() {
           const slug = enrollment.programSlug || program.slug;
           return {
             id: enrollment.id,
+            programId: enrollment.programId,
             title: enrollment.programTitle || program.title || 'Program',
             description:
               program.shortDescription ||
@@ -141,45 +144,55 @@ export default function MyCoursesPage() {
       </div>
 
       {items.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map((item) => (
-            <div key={item.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-xl transition-shadow">
-              {item.imageUrl && (
-                <div className="h-48 bg-gray-200 overflow-hidden">
-                  <img
-                    src={item.imageUrl}
-                    alt={item.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
-              <div className="p-6">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    item.type === 'program'
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                  }`}>
-                    {item.type === 'program' ? 'Program' : 'Course'}
-                  </span>
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{item.title}</h3>
-                <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">{item.description}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    {item.meta}
-                  </span>
-                  <Link
-                    href={item.href}
-                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
-                  >
-                    Continue Learning
-                  </Link>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {items.map((item) => (
+              <div key={item.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-xl transition-shadow">
+                {item.imageUrl && (
+                  <div className="h-48 bg-gray-200 overflow-hidden">
+                    <img
+                      src={item.imageUrl}
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <div className="p-6">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      item.type === 'program'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                        : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                    }`}>
+                      {item.type === 'program' ? 'Program' : 'Course'}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{item.title}</h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">{item.description}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {item.meta}
+                    </span>
+                    <Link
+                      href={item.href}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                    >
+                      Continue Learning
+                    </Link>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          
+          {/* Add chat button for the first enrolled program (if any) */}
+          {items.find(item => item.type === 'program' && item.programId) && (
+            <ProgramChatButton
+              programId={items.find(item => item.type === 'program' && item.programId)!.programId!}
+              programTitle={items.find(item => item.type === 'program' && item.programId)!.title}
+            />
+          )}
+        </>
       ) : (
         <div className="text-center py-20">
           <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
