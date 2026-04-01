@@ -98,28 +98,37 @@ export async function POST(req: Request) {
 
           // Create chat for student-admin communication
           try {
+            // Get student's UID from users collection
+            const studentQuery = await db.collection('users').where('email', '==', userEmail).limit(1).get();
+            const studentId = !studentQuery.empty ? studentQuery.docs[0].id : userEmail; // Fallback to email if user not found
+            
             // Get or find owner/admin user ID
             const ownerEmail = process.env.NEXT_PUBLIC_OWNER_EMAIL || 'owner@phillycultrue.com';
             const ownerQuery = await db.collection('users').where('email', '==', ownerEmail).limit(1).get();
-            const ownerId = !ownerQuery.empty ? ownerQuery.docs[0].id : 'owner';
+            const ownerId = !ownerQuery.empty ? ownerQuery.docs[0].id : null;
 
-            await db.collection('chats').add({
-              programId,
-              programTitle: metadata.programTitle || programData?.title || 'Program',
-              studentId: userEmail,
-              studentName: session.customer_details?.name || 'Student',
-              studentEmail: userEmail,
-              ownerId,
-              participants: [userEmail, ownerId],
-              lastMessage: null,
-              lastMessageTimestamp: null,
-              unreadCountStudent: 0,
-              unreadCountOwner: 0,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            });
+            // Only create chat if we have both student and owner
+            if (ownerId) {
+              await db.collection('chats').add({
+                programId,
+                programTitle: metadata.programTitle || programData?.title || 'Program',
+                studentId,
+                studentName: session.customer_details?.name || 'Student',
+                studentEmail: userEmail,
+                ownerId,
+                participants: [studentId, ownerId], // Store UIDs for proper security rules
+                lastMessage: null,
+                lastMessageTimestamp: null,
+                unreadCountStudent: 0,
+                unreadCountOwner: 0,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              });
 
-            console.log('✅ Chat created for enrollment:', { programId, userEmail });
+              console.log('✅ Chat created for enrollment:', { programId, userEmail, studentId, ownerId });
+            } else {
+              console.warn('⚠️ Owner not found, chat not created');
+            }
           } catch (chatError) {
             console.error('❌ Failed to create chat:', chatError);
             // Don't fail enrollment if chat creation fails

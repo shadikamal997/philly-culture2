@@ -19,7 +19,7 @@ export default function ProgramChatButton({ programId, programTitle }: ProgramCh
 
   useEffect(() => {
     const fetchChat = async () => {
-      if (!user?.uid && !user?.email) {
+      if (!user?.uid) {
         setLoading(false);
         return;
       }
@@ -29,7 +29,7 @@ export default function ProgramChatButton({ programId, programTitle }: ProgramCh
         const q = query(
           chatsRef,
           where('programId', '==', programId),
-          where('studentId', '==', user.email || user.uid)
+          where('studentId', '==', user.uid)
         );
 
         const snapshot = await getDocs(q);
