@@ -207,5 +207,37 @@ service cloud.firestore {
       
       allow delete: if false;
     }
+
+    // =============================
+    // LIVE SESSION BOOKINGS
+    // =============================
+    match /liveSessionBookings/{bookingId} {
+      // Students can read their own bookings, admins can read all
+      allow read: if isAuthenticated() 
+                  && (request.auth.uid == resource.data.studentId || isAdmin());
+      
+      // Students can create their own bookings
+      allow create: if isAuthenticated() 
+                    && request.auth.uid == request.resource.data.studentId;
+      
+      // Admins can update bookings (approve/reject), students can cancel
+      allow update: if isAuthenticated() 
+                    && (isAdmin() || request.auth.uid == resource.data.studentId);
+      
+      // Only admins can delete bookings
+      allow delete: if isAdmin();
+    }
+
+    // =============================
+    // ADMIN AVAILABILITY
+    // =============================
+    match /adminAvailability/{availabilityId} {
+      // Anyone can read availability to see booking slots
+      allow read: if true;
+      
+      // Only admins can create/update/delete their availability
+      allow create, update, delete: if isAdmin() 
+                                    && request.resource.data.adminId == request.auth.uid;
+    }
   }
 }

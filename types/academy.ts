@@ -60,6 +60,17 @@ export interface Program {
   published: boolean;
   featured?: boolean;
   
+  // Delivery method
+  deliveryMethod: 'recorded' | 'live' | 'hybrid'; // recorded = video lessons, live = booking sessions, hybrid = both
+  
+  // Live session configuration (when deliveryMethod is 'live' or 'hybrid')
+  liveSessionsEnabled?: boolean;
+  sessionsRequired?: number; // Number of live sessions included
+  sessionDuration?: number; // Default session length in minutes
+  sessionType?: 'individual' | 'group'; // 1-on-1 or group sessions
+  maxGroupSize?: number; // For group sessions
+  allowRecording?: boolean; // Whether sessions can be recorded
+  
   // Unlock & Access Control
   unlockType: 'instant' | 'drip' | 'scheduled';
   accessDuration: number; // 0 = lifetime, otherwise days

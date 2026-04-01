@@ -321,6 +321,348 @@ export class EmailService {
       </html>
     `;
   }
+
+  // ============================================================
+  // LIVE SESSION EMAILS
+  // ============================================================
+
+  async sendSessionBookingRequest(data: {
+    adminEmail: string;
+    adminName: string;
+    studentName: string;
+    studentEmail: string;
+    programTitle: string;
+    requestedDateTime: Date;
+    sessionDuration: number;
+    studentNotes?: string;
+    dashboardUrl: string;
+  }): Promise<void> {
+    if (!resend) {
+      console.warn('Email service not configured - skipping session booking request email');
+      return;
+    }
+    try {
+      await resend.emails.send({
+        from: this.fromEmail,
+        to: data.adminEmail,
+        subject: `New Session Booking Request from ${data.studentName}`,
+        html: this.generateSessionBookingRequestHTML(data),
+      });
+    } catch (error) {
+      console.error('Error sending session booking request email:', error);
+      throw new Error('Failed to send session booking request email');
+    }
+  }
+
+  async sendSessionApproval(data: {
+    studentEmail: string;
+    studentName: string;
+    programTitle: string;
+    sessionDateTime: Date;
+    sessionDuration: number;
+    meetingLink: string;
+    calendarIcsUrl?: string;
+    adminNotes?: string;
+  }): Promise<void> {
+    if (!resend) {
+      console.warn('Email service not configured - skipping session approval email');
+      return;
+    }
+    try {
+      await resend.emails.send({
+        from: this.fromEmail,
+        to: data.studentEmail,
+        subject: `Your Session is Confirmed - ${data.programTitle}`,
+        html: this.generateSessionApprovalHTML(data),
+      });
+    } catch (error) {
+      console.error('Error sending session approval email:', error);
+      throw new Error('Failed to send session approval email');
+    }
+  }
+
+  async sendSessionRejection(data: {
+    studentEmail: string;
+    studentName: string;
+    programTitle: string;
+    requestedDateTime: Date;
+    reason?: string;
+    alternativeSuggestion?: string;
+  }): Promise<void> {
+    if (!resend) {
+      console.warn('Email service not configured - skipping session rejection email');
+      return;
+    }
+    try {
+      await resend.emails.send({
+        from: this.fromEmail,
+        to: data.studentEmail,
+        subject: `Session Request Update - ${data.programTitle}`,
+        html: this.generateRejectionHTML(data),
+      });
+    } catch (error) {
+      console.error('Error sending session rejection email:', error);
+      throw new Error('Failed to send session rejection email');
+    }
+  }
+
+  async sendSessionReminder(data: {
+    recipientEmail: string;
+    recipientName: string;
+    programTitle: string;
+    sessionDateTime: Date;
+    sessionDuration: number;
+    meetingLink: string;
+    hoursUntilSession: number;
+  }): Promise<void> {
+    if (!resend) {
+      console.warn('Email service not configured - skipping session reminder email');
+      return;
+    }
+    try {
+      await resend.emails.send({
+        from: this.fromEmail,
+        to: data.recipientEmail,
+        subject: `Reminder: Your session starts in ${data.hoursUntilSession} hour${data.hoursUntilSession > 1 ? 's' : ''}`,
+        html: this.generateReminderHTML(data),
+      });
+    } catch (error) {
+      console.error('Error sending session reminder email:', error);
+      throw new Error('Failed to send session reminder email');
+    }
+  }
+
+  async sendSessionRecording(data: {
+    studentEmail: string;
+    studentName: string;
+    programTitle: string;
+    sessionDate: Date;
+    recordingUrl: string;
+    recordingTitle?: string;
+  }): Promise<void> {
+    if (!resend) {
+      console.warn('Email service not configured - skipping session recording email');
+      return;
+    }
+    try {
+      await resend.emails.send({
+        from: this.fromEmail,
+        to: data.studentEmail,
+        subject: `Session Recording Available - ${data.programTitle}`,
+        html: this.generateRecordingHTML(data),
+      });
+    } catch (error) {
+      console.error('Error sending session recording email:', error);
+      throw new Error('Failed to send session recording email');
+    }
+  }
+
+  private generateSessionBookingRequestHTML(data: {
+    adminName: string;
+    studentName: string;
+    studentEmail: string;
+    programTitle: string;
+    requestedDateTime: Date;
+    sessionDuration: number;
+    studentNotes?: string;
+    dashboardUrl: string;
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #DC2626; color: white; padding: 20px; text-align: center;">
+          <h1 style="margin: 0;">🔔 New Session Booking Request</h1>
+        </div>
+        
+        <div style="padding: 20px; background-color: #f9f9f9;">
+          <h2>Hi ${data.adminName},</h2>
+          <p>You have a new live session booking request!</p>
+          
+          <div style="background-color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+            <p><strong>Student:</strong> ${data.studentName} (${data.studentEmail})</p>
+            <p><strong>Program:</strong> ${data.programTitle}</p>
+            <p><strong>Requested Date & Time:</strong> ${data.requestedDateTime.toLocaleString()}</p>
+            <p><strong>Duration:</strong> ${data.sessionDuration} minutes</p>
+            ${data.studentNotes ? `<p><strong>Student Notes:</strong><br/>${data.studentNotes}</p>` : ''}
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.dashboardUrl}" style="background-color: #DC2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Review & Approve/Reject
+            </a>
+          </div>
+
+          <p>Please review this request and approve or suggest an alternative time.</p>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private generateSessionApprovalHTML(data: {
+    studentName: string;
+    programTitle: string;
+    sessionDateTime: Date;
+    sessionDuration: number;
+    meetingLink: string;
+    calendarIcsUrl?: string;
+    adminNotes?: string;
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #10B981; color: white; padding: 20px; text-align: center;">
+          <h1 style="margin: 0;">✅ Your Session is Confirmed!</h1>
+        </div>
+        
+        <div style="padding: 20px; background-color: #f9f9f9;">
+          <h2>Great news, ${data.studentName}!</h2>
+          <p>Your live session has been confirmed.</p>
+          
+          <div style="background-color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+            <p><strong>Program:</strong> ${data.programTitle}</p>
+            <p><strong>Date & Time:</strong> ${data.sessionDateTime.toLocaleString()}</p>
+            <p><strong>Duration:</strong> ${data.sessionDuration} minutes</p>
+            ${data.adminNotes ? `<p><strong>Notes:</strong><br/>${data.adminNotes}</p>` : ''}
+          </div>
+
+          <div style="background-color: #FEF3C7; padding: 15px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #F59E0B;">
+            <p style="margin: 0;"><strong>📹 Meeting Link:</strong></p>
+            <p style="margin: 5px 0;"><a href="${data.meetingLink}" style="color: #DC2626; word-break: break-all;">${data.meetingLink}</a></p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.meetingLink}" style="background-color: #DC2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; margin-right: 10px;">
+              Join Session
+            </a>
+            ${data.calendarIcsUrl ? `<a href="${data.calendarIcsUrl}" style="background-color: #6B7280; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Add to Calendar
+            </a>` : ''}
+          </div>
+
+          <p>You'll receive reminders 24 hours and 1 hour before the session starts.</p>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private generateRejectionHTML(data: {
+    studentName: string;
+    programTitle: string;
+    requestedDateTime: Date;
+    reason?: string;
+    alternativeSuggestion?: string;
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #F59E0B; color: white; padding: 20px; text-align: center;">
+          <h1 style="margin: 0;">Session Request Update</h1>
+        </div>
+        
+        <div style="padding: 20px; background-color: #f9f9f9;">
+          <h2>Hi ${data.studentName},</h2>
+          <p>Unfortunately, the requested session time is not available.</p>
+          
+          <div style="background-color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+            <p><strong>Program:</strong> ${data.programTitle}</p>
+            <p><strong>Requested Time:</strong> ${data.requestedDateTime.toLocaleString()}</p>
+            ${data.reason ? `<p><strong>Reason:</strong> ${data.reason}</p>` : ''}
+            ${data.alternativeSuggestion ? `<p><strong>Alternative Suggestion:</strong><br/>${data.alternativeSuggestion}</p>` : ''}
+          </div>
+
+          <p>Please choose another available time slot or contact us via chat for assistance.</p>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private generateReminderHTML(data: {
+    recipientName: string;
+    programTitle: string;
+    sessionDateTime: Date;
+    sessionDuration: number;
+    meetingLink: string;
+    hoursUntilSession: number;
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #3B82F6; color: white; padding: 20px; text-align: center;">
+          <h1 style="margin: 0;">⏰ Session Reminder</h1>
+        </div>
+        
+        <div style="padding: 20px; background-color: #f9f9f9;">
+          <h2>Hi ${data.recipientName},</h2>
+          <p>Your live session starts in <strong>${data.hoursUntilSession} hour${data.hoursUntilSession > 1 ? 's' : ''}</strong>!</p>
+          
+          <div style="background-color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+            <p><strong>Program:</strong> ${data.programTitle}</p>
+            <p><strong>Date & Time:</strong> ${data.sessionDateTime.toLocaleString()}</p>
+            <p><strong>Duration:</strong> ${data.sessionDuration} minutes</p>
+          </div>
+
+          <div style="background-color: #FEF3C7; padding: 15px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #F59E0B;">
+            <p style="margin: 0;"><strong>📹 Meeting Link:</strong></p>
+            <p style="margin: 5px 0;"><a href="${data.meetingLink}" style="color: #DC2626; word-break: break-all;">${data.meetingLink}</a></p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.meetingLink}" style="background-color: #DC2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Join Session Now
+            </a>
+          </div>
+
+          <p>See you soon!</p>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private generateRecordingHTML(data: {
+    studentName: string;
+    programTitle: string;
+    sessionDate: Date;
+    recordingUrl: string;
+    recordingTitle?: string;
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #8B5CF6; color: white; padding: 20px; text-align: center;">
+          <h1 style="margin: 0;">🎥 Session Recording Available</h1>
+        </div>
+        
+        <div style="padding: 20px; background-color: #f9f9f9;">
+          <h2>Hi ${data.studentName},</h2>
+          <p>The recording from your recent session is now available!</p>
+          
+          <div style="background-color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+            <p><strong>Program:</strong> ${data.programTitle}</p>
+            <p><strong>Session Date:</strong> ${data.sessionDate.toLocaleDateString()}</p>
+            ${data.recordingTitle ? `<p><strong>Recording:</strong> ${data.recordingTitle}</p>` : ''}
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.recordingUrl}" style="background-color: #DC2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Watch Recording
+            </a>
+          </div>
+
+          <p>You can review the session content anytime.</p>
+        </div>
+      </body>
+      </html>
+    `;
+  }
 }
 
 export const emailService = new EmailService();
