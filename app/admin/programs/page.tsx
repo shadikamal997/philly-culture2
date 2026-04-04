@@ -295,51 +295,47 @@ export default function ProgramsPage() {
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                            {program.title}
-                          </h3>
-                          {program.featured && (
-                            <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-semibold rounded-full">
-                              ⭐ Featured
-                            </span>
-                          )}
-                          {!program.published && (
-                            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-semibold rounded-full">
-                              📝 Draft
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                          {program.shortDescription}
-                        </p>
-                        <div className="flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-400">
-                          <span className="flex items-center gap-1">
-                            <span>👨‍🍳</span> {program.instructorName}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span>💰</span> ${program.basePrice}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span>⏱️</span> {program.totalHours}h
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span>📁</span> {program.category}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span>📊</span> {program.difficultyLevel}
-                          </span>
-                          {typeof program.reviewCount === "number" && program.reviewCount > 0 && (
-                            <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400 font-medium">
-                              <span>⭐</span>{" "}
-                              {program.averageRating?.toFixed(1)} ({program.reviewCount} review{program.reviewCount !== 1 ? "s" : ""})
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                        {program.title}
+                      </h3>
+                      {program.featured && (
+                        <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs font-semibold rounded-full">
+                          ⭐ Featured
+                        </span>
+                      )}
+                      {!program.published && (
+                        <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-semibold rounded-full">
+                          📝 Draft
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                      {program.shortDescription}
+                    </p>
+                    <div className="flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <span>👨‍🍳</span> {program.instructorName}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span>💰</span> ${program.basePrice}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span>⏱️</span> {program.totalHours}h
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span>📁</span> {program.category}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span>📊</span> {program.difficultyLevel}
+                      </span>
+                      {typeof program.reviewCount === "number" && program.reviewCount > 0 && (
+                        <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400 font-medium">
+                          <span>⭐</span>{" "}
+                          {program.averageRating?.toFixed(1)} ({program.reviewCount} review{program.reviewCount !== 1 ? "s" : ""})
+                        </span>
+                      )}
                     </div>
                   </div>
 
