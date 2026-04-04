@@ -281,9 +281,9 @@ export default function ProgramsPage() {
             {filteredPrograms.map((program) => (
               <div
                 key={program.id}
-                className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 hover:border-gray-300 dark:hover:border-gray-700 transition-all"
+                className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 hover:border-gray-300 dark:hover:border-gray-700 transition-all overflow-visible"
               >
-                <div className="flex gap-6">
+                <div className="flex gap-6 items-start">
                   {/* Thumbnail */}
                   <div className="relative w-48 h-32 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-800">
                     <Image
@@ -295,7 +295,7 @@ export default function ProgramsPage() {
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0 overflow-hidden">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                         {program.title}
