@@ -344,7 +344,7 @@ export default function ProgramsPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 w-36 flex-shrink-0">
                     <button
                       onClick={() => togglePublished(program.id, program.published)}
                       className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
@@ -398,4 +398,3 @@ export default function ProgramsPage() {
     </>
   );
 }
-// Cache bust Sat Apr  4 16:22:55 +03 2026
