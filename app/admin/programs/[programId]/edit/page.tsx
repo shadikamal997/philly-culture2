@@ -43,8 +43,9 @@ export default function EditProgram() {
   const [featured, setFeatured] = useState(false);
   const [certificateEnabled, setCertificateEnabled] = useState(true);
   
-  // UNLOCK & ACCESS CONTROL (Simplified Drip Schedule)
-  const [dripSchedule, setDripSchedule] = useState<"none" | "daily" | "weekly" | "monthly">("none");
+  // UNLOCK & ACCESS CONTROL (Lessons per Period Schedule)
+  const [scheduleType, setScheduleType] = useState<"none" | "weekly" | "monthly">("none");
+  const [lessonsPerPeriod, setLessonsPerPeriod] = useState("1");
   const [accessDuration, setAccessDuration] = useState("0"); // 0 = lifetime
   const [isCohort, setIsCohort] = useState(false);
   const [startDate, setStartDate] = useState("");
@@ -112,20 +113,31 @@ export default function EditProgram() {
         setFeatured(program.featured || false);
         setCertificateEnabled(program.certificateEnabled !== undefined ? program.certificateEnabled : true);
         
-        // Access control - convert from backend format to simplified UI
+        // Access control - convert from backend format to lessons per period UI
         const unlockType = program.unlockType || "instant";
         const dripInterval = program.dripInterval || 1;
+        
         if (unlockType === "instant") {
-          setDripSchedule("none");
-        } else if (dripInterval === 1) {
-          setDripSchedule("daily");
-        } else if (dripInterval === 7) {
-          setDripSchedule("weekly");
-        } else if (dripInterval === 30) {
-          setDripSchedule("monthly");
+          setScheduleType("none");
+          setLessonsPerPeriod("1");
+        } else if (unlockType === "drip") {
+          // Determine if weekly or monthly based on interval
+          if (dripInterval <= 7) {
+            // Weekly schedule
+            setScheduleType("weekly");
+            const lessons = Math.round(7 / dripInterval);
+            setLessonsPerPeriod(lessons.toString());
+          } else {
+            // Monthly schedule
+            setScheduleType("monthly");
+            const lessons = Math.round(30 / dripInterval);
+            setLessonsPerPeriod(lessons.toString());
+          }
         } else {
-          setDripSchedule("none"); // fallback
+          setScheduleType("none");
+          setLessonsPerPeriod("1");
         }
+        
         setAccessDuration(program.accessDuration?.toString() || "0");
         setIsCohort(program.isCohort || false);
         
@@ -264,10 +276,12 @@ export default function EditProgram() {
         tags: tags ? tags.split(",").map(t => t.trim()).filter(t => t) : [],
         maxStudents: maxStudents ? Number(maxStudents) : null,
         
-        // UNLOCK & ACCESS CONTROL (Convert simplified drip schedule to backend format)
-        unlockType: dripSchedule === "none" ? "instant" : "drip",
+        // UNLOCK & ACCESS CONTROL (Convert lessons per period to backend drip format)
+        unlockType: scheduleType === "none" ? "instant" : "drip",
         accessDuration: Number(accessDuration),
-        dripInterval: dripSchedule === "daily" ? 1 : dripSchedule === "weekly" ? 7 : dripSchedule === "monthly" ? 30 : null,
+        dripInterval: scheduleType === "none" ? null : 
+                     scheduleType === "weekly" ? Math.max(1, Math.round(7 / (parseInt(lessonsPerPeriod) || 1))) :
+                     Math.max(1, Math.round(30 / (parseInt(lessonsPerPeriod) || 1))),
         isCohort,
         startDate: isCohort && startDate ? startDate : null,
         enrollmentDeadline: isCohort && enrollmentDeadline ? enrollmentDeadline : null,
@@ -691,22 +705,37 @@ export default function EditProgram() {
               <div>
                 <label className="block text-sm font-medium mb-2">Lesson Release Schedule *</label>
                 <select
-                  value={dripSchedule}
-                  onChange={(e) => setDripSchedule(e.target.value as any)}
+                  value={scheduleType}
+                  onChange={(e) => setScheduleType(e.target.value as any)}
                   className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-600"
                 >
                   <option value="none">🔓 None - All lessons available immediately (Self-paced)</option>
-                  <option value="daily">📅 Daily - One lesson unlocks each day</option>
-                  <option value="weekly">📆 Weekly - One lesson unlocks each week</option>
-                  <option value="monthly">📊 Monthly - One lesson unlocks each month</option>
+                  <option value="weekly">📆 Weekly - Lessons unlock throughout the week</option>
+                  <option value="monthly">📊 Monthly - Lessons unlock throughout the month</option>
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  {dripSchedule === "none" && "Students can access all lessons immediately after enrollment"}
-                  {dripSchedule === "daily" && "Students get 1 new lesson every day after enrollment"}
-                  {dripSchedule === "weekly" && "Students get 1 new lesson every 7 days after enrollment"}
-                  {dripSchedule === "monthly" && "Students get 1 new lesson every 30 days after enrollment"}
-                </p>
               </div>
+
+              {scheduleType !== "none" && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Lessons per {scheduleType === "weekly" ? "Week" : "Month"} *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={scheduleType === "weekly" ? "7" : "30"}
+                    value={lessonsPerPeriod}
+                    onChange={(e) => setLessonsPerPeriod(e.target.value)}
+                    className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-600"
+                    placeholder="e.g., 3"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {scheduleType === "weekly" 
+                      ? `Example: 3 = lessons unlock every ~${Math.round(7 / (parseInt(lessonsPerPeriod) || 1))} days` 
+                      : `Example: 10 = lessons unlock every ~${Math.round(30 / (parseInt(lessonsPerPeriod) || 1))} days`}
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium mb-2">Access Duration (days)</label>
@@ -722,15 +751,15 @@ export default function EditProgram() {
               </div>
             </div>
 
-            {dripSchedule !== "none" && (
+            {scheduleType !== "none" && (
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                 <div className="flex items-start gap-2">
                   <span className="text-2xl">💡</span>
                   <div>
                     <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Drip Schedule Active</p>
                     <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                      Lessons will unlock automatically based on the student's enrollment date. 
-                      First lesson unlocks immediately, then {dripSchedule === "daily" ? "1 lesson per day" : dripSchedule === "weekly" ? "1 lesson per week (every 7 days)" : "1 lesson per month (every 30 days)"}.
+                      Students will unlock {lessonsPerPeriod} lesson{parseInt(lessonsPerPeriod) !== 1 ? 's' : ''} per {scheduleType === "weekly" ? "week" : "month"}, 
+                      distributed evenly after enrollment. First lesson unlocks immediately.
                     </p>
                   </div>
                 </div>
