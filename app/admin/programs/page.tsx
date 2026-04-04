@@ -340,7 +340,7 @@ export default function ProgramsPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex flex-col gap-2 w-36 flex-shrink-0">
+                  <div className="flex flex-col gap-2 w-40 flex-shrink-0 bg-red-50 dark:bg-red-950 p-2 border-2 border-red-500">
                     <button
                       onClick={() => togglePublished(program.id, program.published)}
                       className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
