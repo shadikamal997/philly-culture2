@@ -1,35 +1,34 @@
 "use client";
 
-import { ArrowRight, Star, Users, BookOpen } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import { Marquee } from "@/components/ui/marquee";
 
 const stats = [
-  { emoji: "🎓", label: "STUDENTS TRAINED", value: "5,000+", icon: Users },
-  { emoji: "📚", label: "COURSES COMPLETED", value: "200+", icon: BookOpen },
-  { emoji: "⭐", label: "AVERAGE RATING", value: "4.9/5", icon: Star },
+  { label: "STUDENTS TRAINED", value: "5,000+" },
+  { label: "COURSES COMPLETED", value: "200+" },
+  { label: "AVERAGE RATING", value: "4.9/5" },
 ];
 
 function StatsMarquee() {
   return (
     <Marquee
-      className="border-white/20 border-y bg-black/40 py-4 backdrop-blur-md [--duration:25s] [--gap:3rem]"
+      className="border-white/20 border-y bg-black/50 py-2 backdrop-blur-md [--duration:20s] [--gap:2rem]"
       pauseOnHover
       repeat={4}
     >
       {stats.map((stat) => (
         <div
-          className="flex items-center gap-4 whitespace-nowrap px-4"
+          className="flex items-center gap-2 whitespace-nowrap px-2"
           key={stat.label}
         >
-          <span className="font-black font-mono text-primary text-2xl tracking-tight drop-shadow-lg">
+          <span className="font-bold font-mono text-primary text-sm tracking-tight drop-shadow-lg">
             {stat.value}
           </span>
-          <span className="font-semibold font-mono text-base text-white/90 uppercase tracking-[0.2em]">
+          <span className="font-medium font-mono text-xs text-white/80 uppercase tracking-[0.15em]">
             {stat.label}
           </span>
-          <span className="text-2xl drop-shadow-lg">{stat.emoji}</span>
         </div>
       ))}
     </Marquee>
@@ -49,13 +48,8 @@ export default function Hero() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
       </div>
 
-      {/* Stats Marquee - Positioned above content */}
-      <div className="relative z-10 w-full mb-8">
-        <StatsMarquee />
-      </div>
-
       {/* Main Hero Content */}
-      <div className="relative z-10 w-full px-6 pb-20 sm:px-10 sm:pb-28 lg:px-20 lg:pb-36 max-w-7xl mx-auto">
+      <div className="relative z-10 w-full px-6 pb-8 sm:px-10 sm:pb-12 lg:px-20 lg:pb-16 max-w-7xl mx-auto">
         <div className="flex flex-col gap-8">
           {/* Headline Section */}
           <div className="space-y-6 max-w-4xl">
@@ -79,6 +73,11 @@ export default function Hero() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Stats Marquee - Positioned at bottom */}
+      <div className="relative z-10 w-full max-w-3xl mx-auto mb-8">
+        <StatsMarquee />
       </div>
     </section>
   );
