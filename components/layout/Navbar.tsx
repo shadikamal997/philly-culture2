@@ -40,9 +40,9 @@ export default function Navbar() {
       >
         <div
           className={cn(
-            "mx-auto mt-2 max-w-6xl px-6 transition-all duration-300 lg:px-12",
+            "mx-auto mt-2 max-w-6xl px-6 transition-all duration-300 lg:px-12 bg-white/80 backdrop-blur-md border border-gray-100 rounded-2xl shadow-md",
             isScrolled &&
-              "bg-white/90 max-w-4xl rounded-2xl border border-gray-200 backdrop-blur-lg lg:px-5 shadow-lg"
+              "bg-white/90 max-w-4xl border-gray-200 lg:px-5 shadow-lg"
           )}
         >
           <div className="relative flex flex-wrap items-center justify-between gap-6 lg:gap-0 py-2">
