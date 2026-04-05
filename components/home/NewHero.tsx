@@ -66,7 +66,7 @@ function StatsMarquee() {
 
 export default function Hero() {
   return (
-    <section className="relative flex flex-col w-full">
+    <section className="flex flex-col w-full">
       {/* Hero Background Section */}
       <div className="relative h-screen w-full">
         <div
