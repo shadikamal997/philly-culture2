@@ -1,6 +1,6 @@
 'use client';
 
-import HeroSection from '@/components/home/HeroSection';
+import NewHero from '@/components/home/NewHero';
 import FeaturedCourses from '@/components/home/FeaturedCourses';
 import HowItWorks from '@/components/home/HowItWorks';
 import StorySection from '@/components/home/StorySection';
@@ -10,8 +10,8 @@ import EmailCapture from '@/components/home/EmailCapture';
 export default function Home() {
   return (
     <main className="overflow-x-hidden -mt-16">
-      {/* Hero Section with Parallax Background */}
-      <HeroSection />
+      {/* Hero Section with Marquee and Stats */}
+      <NewHero />
       
       {/* Featured Courses */}
       <FeaturedCourses />

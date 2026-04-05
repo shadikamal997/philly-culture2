@@ -5,6 +5,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --primary: oklch(0.95 0.16 118.89);
 }
 
 html {
@@ -28,6 +29,7 @@ h1, h2, h3 {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --primary: oklch(0.95 0.16 118.89);
   }
 }
 
@@ -85,6 +87,24 @@ h1, h2, h3 {
   }
 }
 
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+  }
+}
+
+@keyframes marquee-vertical {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(-100% - var(--gap)));
+  }
+}
+
 .animate-fade-in {
   animation: fade-in 0.8s ease-out forwards;
 }
@@ -103,6 +123,14 @@ h1, h2, h3 {
 
 .animate-scale-in {
   animation: scale-in 0.6s ease-out forwards;
+}
+
+.animate-marquee {
+  animation: marquee var(--duration) infinite linear;
+}
+
+.animate-marquee-vertical {
+  animation: marquee-vertical var(--duration) linear infinite;
 }
 
 /* Smooth transitions */
