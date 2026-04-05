@@ -43,19 +43,19 @@ const programs = [
 function StatsMarquee() {
   return (
     <Marquee
-      className="border-gray-200 border-y bg-gray-50 py-2 [--duration:20s] [--gap:2rem]"
+      className="border-gray-200 border-y bg-gray-50 py-4 [--duration:20s] [--gap:3rem]"
       pauseOnHover
       repeat={4}
     >
       {stats.map((stat) => (
         <div
-          className="flex items-center gap-2 whitespace-nowrap px-2"
+          className="flex items-center gap-3 whitespace-nowrap px-4"
           key={stat.label}
         >
-          <span className="font-bold font-mono text-primary text-sm tracking-tight">
+          <span className="font-bold font-mono text-primary text-3xl tracking-tight">
             {stat.value}
           </span>
-          <span className="font-medium font-mono text-xs text-gray-600 uppercase tracking-[0.15em]">
+          <span className="font-medium font-mono text-base text-gray-600 uppercase tracking-[0.15em]">
             {stat.label}
           </span>
         </div>
@@ -105,18 +105,16 @@ export default function Hero() {
             </div>
           </div>
         </div>
+
+        {/* Stats Marquee - At bottom of hero image */}
+        <div className="absolute bottom-0 left-0 right-0 z-20">
+          <StatsMarquee />
+        </div>
       </div>
 
       {/* Program Slider - Full width */}
       <div className="relative w-full bg-white">
         <ProgramSlider programs={programs} />
-      </div>
-
-      {/* Stats Marquee - Positioned at bottom */}
-      <div className="relative w-full bg-white pb-8">
-        <div className="max-w-3xl mx-auto">
-          <StatsMarquee />
-        </div>
       </div>
     </section>
   );

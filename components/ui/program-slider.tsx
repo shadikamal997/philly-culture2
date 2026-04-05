@@ -22,7 +22,7 @@ export function ProgramSlider({ programs }: ProgramSliderProps) {
       <motion.div
         className="flex items-center"
         animate={{
-          x: [0, -((programs.length * 450) / 2)],
+          x: [0, -((programs.length * 330) / 2)],
         }}
         transition={{
           x: {
@@ -45,8 +45,8 @@ export function ProgramSlider({ programs }: ProgramSliderProps) {
             onClick={program.onClick}
             className="flex-shrink-0 cursor-pointer relative overflow-hidden rounded-3xl shadow-2xl"
             style={{
-              width: "420px",
-              height: "560px",
+              width: "300px",
+              height: "400px",
             }}
           >
             {/* Image */}
