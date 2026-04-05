@@ -56,20 +56,20 @@ export function ProgramSlider({ programs }: ProgramSliderProps) {
               className="w-full h-full object-cover"
             />
 
-            {/* Gradient Overlay */}
+            {/* Dark Gradient Overlay for text readability */}
             <div
               className="absolute inset-0"
               style={{
-                background: "linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.95) 100%)",
+                background: "linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.7) 100%)",
               }}
             />
 
             {/* Text Content */}
-            <div className="absolute bottom-0 left-0 right-0 p-8 flex flex-col gap-3">
-              <span className="font-semibold text-sm text-gray-600 uppercase tracking-[0.15em]">
+            <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col gap-2">
+              <span className="font-semibold text-xs text-white/90 uppercase tracking-[0.15em]">
                 {program.category}
               </span>
-              <h3 className="font-bold text-3xl text-gray-900 leading-tight">
+              <h3 className="font-bold text-2xl text-white leading-tight">
                 {program.title}
               </h3>
             </div>

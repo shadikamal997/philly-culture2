@@ -15,28 +15,28 @@ const stats = [
 const programs = [
   {
     image: "/images/slider/cooking-class-where-students-are-following-recipe-chopping-ingredients-cooking-dish-toge.jpg",
-    category: "CULINARY BASICS",
-    title: "Essential Cooking Techniques",
+    category: "CLASSES",
+    title: "Cooking Class",
   },
   {
     image: "/images/slider/father-son-cooking-after-recipe.jpg",
-    category: "STREET FOOD",
-    title: "Philly Cheesesteak Mastery",
+    category: "FAMILY",
+    title: "Family Cooking",
   },
   {
     image: "/images/slider/serious-people-cooking-vegetables-kitchen-table.jpg",
-    category: "FINE DINING",
-    title: "Gourmet Plating & Presentation",
+    category: "WORKSHOP",
+    title: "Vegetable Prep",
   },
   {
     image: "/images/slider/smiling-people-cooking-vegetables-kitchen.jpg",
-    category: "BAKING",
-    title: "Artisan Bread Workshop",
+    category: "LESSONS",
+    title: "Kitchen Skills",
   },
   {
     image: "/images/slider/two-women-kitchen-with-pots-hanging-from-ceiling.jpg",
-    category: "INTERNATIONAL",
-    title: "Global Flavors Exploration",
+    category: "CULINARY",
+    title: "Traditional Kitchen",
   },
 ];
 
