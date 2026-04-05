@@ -1,8 +1,5 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
-
-import { Button } from "@/components/ui/Button";
 import { Marquee } from "@/components/ui/marquee";
 import { ProgramSlider } from "@/components/ui/program-slider";
 
@@ -92,16 +89,6 @@ export default function Hero() {
               <p className="text-xl sm:text-2xl md:text-3xl text-white/90 font-light italic tracking-wide">
                 — that's Philly
               </p>
-              
-              {/* CTA Button */}
-              <div className="pt-4">
-                <Button className="rounded-none py-0 pr-0 font-semibold text-black text-xl bg-primary hover:bg-primary/90 shadow-2xl hover:shadow-primary/50 transition-all duration-300 hover:scale-105">
-                  Explore Academy
-                  <span className="border-black/20 border-l p-4">
-                    <ArrowRight className="w-6 h-6" />
-                  </span>
-                </Button>
-              </div>
             </div>
           </div>
         </div>
