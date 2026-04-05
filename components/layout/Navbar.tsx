@@ -5,15 +5,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
 
 const AnimatedNavLink = ({ href, children }: { href: string; children: React.ReactNode }) => {
-  const defaultTextColor = 'text-gray-700';
-  const hoverTextColor = 'text-black';
-
   return (
-    <Link href={href} className={`group relative inline-block overflow-hidden h-6 flex items-center text-base`}>
-      <div className="flex flex-col transition-transform duration-400 ease-out transform group-hover:-translate-y-1/2">
-        <span className={defaultTextColor}>{children}</span>
-        <span className={hoverTextColor}>{children}</span>
-      </div>
+    <Link href={href} className="text-gray-700 hover:text-black transition-colors duration-200 text-base font-medium">
+      {children}
     </Link>
   );
 };
@@ -45,11 +39,12 @@ export default function Navbar() {
       {/* Floating Navbar - Centered */}
       <header className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50
                          flex items-center
-                         px-8 py-4 backdrop-blur-md
+                         px-12 py-5 backdrop-blur-md
                          rounded-full
-                         border border-gray-200 bg-white/90 shadow-lg">
+                         border border-gray-200 bg-white/90 shadow-lg
+                         min-w-[700px]">
 
-        <nav className="flex items-center space-x-8">
+        <nav className="flex items-center space-x-12">
           {navLinksData.map((link) => (
             <AnimatedNavLink key={link.href} href={link.href}>
               {link.label}
@@ -57,7 +52,7 @@ export default function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-4 ml-8 pl-8 border-l border-gray-200">
+        <div className="flex items-center gap-4 ml-12 pl-12 border-l border-gray-200">
           {user ? (
             <div className="relative">
               <button
