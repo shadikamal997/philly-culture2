@@ -14,27 +14,27 @@ const stats = [
 
 const programs = [
   {
-    image: "/images/slider/cooking-class-where-students-are-following-recipe-chopping-ingredients-cooking-dish-toge.jpg",
+    image: "/images/slider/photo1.jpg",
     category: "CLASSES",
     title: "Cooking Class",
   },
   {
-    image: "/images/slider/father-son-cooking-after-recipe.jpg",
+    image: "/images/slider/photo3.jpg",
     category: "FAMILY",
     title: "Family Cooking",
   },
   {
-    image: "/images/slider/serious-people-cooking-vegetables-kitchen-table.jpg",
+    image: "/images/slider/photo2.jpg",
     category: "WORKSHOP",
     title: "Vegetable Prep",
   },
   {
-    image: "/images/slider/smiling-people-cooking-vegetables-kitchen.jpg",
+    image: "/images/slider/photo5.jpg",
     category: "LESSONS",
     title: "Kitchen Skills",
   },
   {
-    image: "/images/slider/two-women-kitchen-with-pots-hanging-from-ceiling.jpg",
+    image: "/images/slider/photo6.jpg",
     category: "CULINARY",
     title: "Traditional Kitchen",
   },
