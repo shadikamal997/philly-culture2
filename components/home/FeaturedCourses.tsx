@@ -36,45 +36,16 @@ export default function FeaturedCourses() {
     fetchPrograms();
   }, []);
 
-  // Fallback courses if no programs are available
-  const fallbackCourses = [
-    {
-      title: 'Philly Cheesesteak Masterclass',
-      description: 'Learn the secrets behind Philadelphia\'s most iconic sandwich',
-      price: 59,
-      image: 'https://images.unsplash.com/photo-1553909489-ec2175ef98d2?w=800&q=80',
-      duration: '2.5 hours',
-      lessons: 12,
-    },
-    {
-      title: 'Italian-American Classics',
-      description: 'Master the traditional dishes that shaped Philly\'s food culture',
-      price: 49,
-      image: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=800&q=80',
-      duration: '3 hours',
-      lessons: 15,
-    },
-    {
-      title: 'Street Food Secrets',
-      description: 'Discover the hidden gems of Philadelphia street food',
-      price: 39,
-      image: 'https://images.unsplash.com/photo-1565299507177-b0ac66763828?w=800&q=80',
-      duration: '1.5 hours',
-      lessons: 8,
-    },
-  ];
-
-  const displayCourses = programs.length > 0 
-    ? programs.slice(0, 3).map(p => ({
-        title: p.title,
-        description: p.shortDescription,
-        price: p.basePrice,
-        image: p.thumbnail,
-        duration: `${p.totalHours} hours`,
-        lessons: 0, // Not tracking lesson count yet
-        slug: p.slug,
-      }))
-    : fallbackCourses;
+  // Map programs to display format
+  const displayCourses = programs.slice(0, 3).map(p => ({
+    title: p.title,
+    description: p.shortDescription,
+    price: p.basePrice,
+    image: p.thumbnail,
+    duration: `${p.totalHours} hours`,
+    lessons: 0, // Not tracking lesson count yet
+    slug: p.slug,
+  }));
 
   return (
     <section className="py-24 sm:py-32 px-6 bg-white dark:bg-gray-950">
@@ -95,6 +66,10 @@ export default function FeaturedCourses() {
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+          </div>
+        ) : displayCourses.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600 dark:text-gray-400 text-lg">No programs available yet. Check back soon!</p>
           </div>
         ) : (
           <>

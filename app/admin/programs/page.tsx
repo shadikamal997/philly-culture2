@@ -291,6 +291,7 @@ export default function ProgramsPage() {
                       alt={program.title}
                       fill
                       className="object-cover"
+                      unoptimized
                     />
                   </div>
 

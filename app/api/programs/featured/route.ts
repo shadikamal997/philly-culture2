@@ -3,32 +3,40 @@ import { adminDb } from '@/firebase/firebaseAdmin';
 
 export async function GET() {
   try {
-    // Fetch published and featured programs
+    // Fetch all published programs
     const snapshot = await adminDb
       .collection('programs')
       .where('published', '==', true)
-      .limit(6) // Get up to 6 featured programs
       .get();
 
-    // Sort by featured status and creation date
-    const programs = snapshot.docs
+    // Get all published programs (excluding demos/tests)
+    const allPrograms = snapshot.docs
       .map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }))
+      .filter((program: any) => {
+        // Exclude programs with "demo", "test", or "sample" in title (case-insensitive)
+        const title = (program.title || '').toLowerCase();
+        return !title.includes('demo') && 
+               !title.includes('test') && 
+               !title.includes('sample');
+      })
       .sort((a: any, b: any) => {
-        // Featured programs first
-        if (a.featured && !b.featured) return -1;
-        if (!a.featured && b.featured) return 1;
-        
-        // Then by creation date
+        // Sort by creation date (newest first)
         const aTime = a.createdAt?.toDate?.() || new Date(0);
         const bTime = b.createdAt?.toDate?.() || new Date(0);
         return bTime.getTime() - aTime.getTime();
       });
 
+    // First try to get featured programs
+    const featuredPrograms = allPrograms.filter((program: any) => program.featured);
+    
+    // If we have featured programs, use them; otherwise use latest published programs
+    const programsToShow = featuredPrograms.length > 0 ? featuredPrograms : allPrograms;
+
     return NextResponse.json({ 
-      programs: programs.slice(0, 3), // Return top 3 for homepage
+      programs: programsToShow.slice(0, 3), // Return top 3 for homepage
       success: true 
     });
   } catch (error) {
