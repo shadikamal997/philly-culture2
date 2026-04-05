@@ -46,44 +46,7 @@ export default function Hero() {
             "url(https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=1920&q=80)",
         }}
       >
-        <div className="absolute inset-0 bg-black/40" />
-      </div>
-
-      <div className="relative z-10 w-full max-w-4xl px-4 text-white sm:px-8 lg:px-16">
-        <div className="space-y-4">
-          <AvatarStack />
-          <StatsMarquee />
-        </div>
-      </div>
-      <div className="relative z-10 w-full px-4 pb-16 sm:px-8 sm:pb-24 lg:px-16 lg:pb-32">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-end">
-          <div className="w-full space-y-4 sm:w-1/2">
-            <h1 className="font-medium text-4xl text-white leading-[1.05] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-              Taste the <span className="text-primary">Culture</span>
-              <br />
-              Live the <span className="text-primary">Tradition</span>
-              <br />
-              <span className="text-white">— that's Philly</span>
-            </h1>
-            <Button className="rounded-none py-0 pr-0 font-normal text-black text-lg bg-primary hover:bg-primary/90">
-              Explore Academy
-              <span className="border-neutral-500 border-l p-3">
-                <ArrowRight />
-              </span>
-            </Button>
-          </div>
-          <div className="w-full sm:w-1/2">
-            <p className="text-base text-primary italic sm:text-right md:text-2xl">
-              Discover authentic Philly flavors through immersive culinary experiences. 
-              From street food classics to gourmet creations, bring the city's soul to your kitchen.
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-gradient-to-b from-black/60 via-black/40 to-black/70" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
       </div>
 
       {/* Stats Marquee - Positioned above content */}
@@ -113,4 +76,10 @@ gradient-to-b from-black/60 via-black/40 to-black/70" />
                   <ArrowRight className="w-6 h-6" />
                 </span>
               </Button>
-            </div
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
