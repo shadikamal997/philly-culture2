@@ -8,6 +8,9 @@ import { formatCurrency } from '@/lib/formatCurrency';
 
 const siteUrl = () => process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
+// Trimmed: the Vercel value once carried a trailing newline, which broke owner lookups
+const ownerEmail = () => (process.env.NEXT_PUBLIC_OWNER_EMAIL || 'owner@phillycultrue.com').trim();
+
 const customerEmail = (session: Stripe.Checkout.Session) =>
   session.metadata?.userEmail || session.customer_details?.email || null;
 
@@ -78,8 +81,7 @@ async function enrollFromSession(session: Stripe.Checkout.Session): Promise<stri
     const studentId = !studentQuery.empty ? studentQuery.docs[0].id : userEmail; // Fallback to email if user not found
 
     // Get or find owner/admin user ID
-    const ownerEmail = process.env.NEXT_PUBLIC_OWNER_EMAIL || 'owner@phillycultrue.com';
-    const ownerQuery = await db.collection('users').where('email', '==', ownerEmail).limit(1).get();
+    const ownerQuery = await db.collection('users').where('email', '==', ownerEmail()).limit(1).get();
     const ownerId = !ownerQuery.empty ? ownerQuery.docs[0].id : null;
 
     // Only create chat if we have both student and owner
@@ -289,7 +291,7 @@ export async function POST(req: Request) {
           const enrollment = enrollmentsSnap.docs[0].data();
           try {
             await emailService.sendDisputeNotification({
-              adminEmail: process.env.NEXT_PUBLIC_OWNER_EMAIL || 'owner@phillycultrue.com',
+              adminEmail: ownerEmail(),
               customerEmail: enrollment.userEmail,
               programTitle: enrollment.programTitle || 'Program',
               amount: formatCurrency(dispute.amount / 100, dispute.currency, 2),

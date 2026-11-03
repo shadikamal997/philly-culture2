@@ -28,14 +28,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const ownerId = process.env.NEXT_PUBLIC_OWNER_EMAIL || 'owner@example.com';
+    const ownerId = (process.env.NEXT_PUBLIC_OWNER_EMAIL || 'owner@example.com').trim();
 
     // Create the booking
     const bookingId = await createSessionBooking(body, ownerId);
 
     // Send email notification to owner
     try {
-      const ownerEmail = process.env.NEXT_PUBLIC_OWNER_EMAIL || 'owner@example.com';
+      const ownerEmail = (process.env.NEXT_PUBLIC_OWNER_EMAIL || 'owner@example.com').trim();
       await emailService.sendSessionBookingRequest({
         adminEmail: ownerEmail,
         adminName: 'Admin',
