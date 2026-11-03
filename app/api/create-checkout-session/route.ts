@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { stripe } from '@/services/stripeService';
+import { CHECKOUT_SESSION_DEFAULTS } from '@/lib/stripe';
 import { adminDb as db } from '@/firebase/firebaseAdmin';
 import { Course } from '@/types/firestore/course';
 import { Product } from '@/types/firestore/product';
@@ -192,6 +193,7 @@ export async function POST(req: Request) {
     const domainInfo = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
     const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+      ...CHECKOUT_SESSION_DEFAULTS,
       line_items: stripeLineItems,
       mode: 'payment',
       success_url: `${domainInfo}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,

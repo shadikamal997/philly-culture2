@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { adminDb } from '@/firebase/firebaseAdmin';
+import { CHECKOUT_SESSION_DEFAULTS } from '@/lib/stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder', { apiVersion: '2023-10-16' as Stripe.LatestApiVersion });
 
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
         const orderRef = adminDb.collection('orders').doc();
 
         const session = await stripe.checkout.sessions.create({
+            ...CHECKOUT_SESSION_DEFAULTS,
             payment_method_types: ['card'],
             line_items,
             mode: 'payment',

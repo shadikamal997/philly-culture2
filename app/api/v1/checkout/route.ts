@@ -1,4 +1,4 @@
-import { stripe } from "@/lib/stripe";
+import { stripe, CHECKOUT_SESSION_DEFAULTS } from "@/lib/stripe";
 import { adminDb } from "@/firebase/firebaseAdmin";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimiter, RATE_LIMITS, getClientIdentifier } from "@/lib/rateLimit";
@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
     // Create Stripe Checkout Session
     console.log('🔵 Creating Stripe checkout session...');
     const session = await stripe.checkout.sessions.create({
+      ...CHECKOUT_SESSION_DEFAULTS,
       payment_method_types: ["card"],
       mode: "payment",
       automatic_tax: { enabled: true },
