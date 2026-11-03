@@ -1,6 +1,7 @@
 import { adminDb, adminAuth } from "@/firebase/firebaseAdmin";
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { formatCurrency } from "@/lib/formatCurrency";
 
 export const metadata = {
   title: 'All Programs | Philly Culture Academy',
@@ -104,7 +105,7 @@ export default async function ProgramsPage() {
                 </p>
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                   <span className="text-3xl font-bold text-amber-600">
-                    ${program.basePrice}
+                    {formatCurrency(program.basePrice, program.currency)}
                   </span>
                   {program.totalHours && (
                     <span className="text-sm text-gray-500">

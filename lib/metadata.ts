@@ -77,6 +77,7 @@ export function generateCourseSchema(program: {
   title: string;
   description: string;
   basePrice: number;
+  currency?: string;
   thumbnail?: string;
   slug: string;
   duration?: number; // in weeks
@@ -96,7 +97,7 @@ export function generateCourseSchema(program: {
     offers: {
       '@type': 'Offer',
       price: program.basePrice,
-      priceCurrency: 'USD',
+      priceCurrency: (program.currency || 'usd').toUpperCase(),
       availability: 'https://schema.org/InStock',
     },
     image: program.thumbnail || siteConfig.ogImage,

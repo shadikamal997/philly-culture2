@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { formatCurrency } from '@/lib/formatCurrency';
 
 interface Program {
   id: string;
   title: string;
   shortDescription: string;
   basePrice: number;
+  currency?: string;
   thumbnail: string;
   totalHours: number;
   slug: string;
@@ -40,7 +42,7 @@ export default function FeaturedCourses() {
   const displayCourses = programs.slice(0, 3).map(p => ({
     title: p.title,
     description: p.shortDescription,
-    price: p.basePrice,
+    price: formatCurrency(p.basePrice, p.currency),
     image: p.thumbnail,
     duration: `${p.totalHours} hours`,
     lessons: 0, // Not tracking lesson count yet
@@ -91,7 +93,7 @@ export default function FeaturedCourses() {
                     
                     {/* Price Badge */}
                     <div className="absolute top-4 right-4 bg-white dark:bg-black text-black dark:text-white px-4 py-2 rounded-full font-bold shadow-lg">
-                      ${course.price}
+                      {course.price}
                     </div>
                   </div>
 

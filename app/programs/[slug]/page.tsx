@@ -5,6 +5,7 @@ import Image from "next/image";
 import EnrollButton from "@/components/programs/EnrollButton";
 import ProgramReviews from "@/components/programs/ProgramReviews";
 import { generateCourseSchema } from "@/lib/metadata";
+import { formatCurrency } from "@/lib/formatCurrency";
 
 export const revalidate = 3600;
 
@@ -51,6 +52,19 @@ export default async function ProgramDetail({ params }: { params: { slug: string
     : [];
 
   const tags: string[] = Array.isArray(program.tags) ? program.tags : [];
+
+  const curriculum: { title: string; description?: string }[] = Array.isArray(program.curriculum)
+    ? program.curriculum
+    : [];
+
+  const includes: string[] = Array.isArray(program.includes) ? program.includes : [];
+
+  // Extra photos beyond the hero/thumbnail
+  const gallery: string[] = Array.isArray(program.images)
+    ? program.images.filter((src: string) => src && src !== program.thumbnail)
+    : [];
+
+  const price = formatCurrency(program.basePrice, program.currency);
 
   return (
     <>
@@ -167,7 +181,7 @@ export default async function ProgramDetail({ params }: { params: { slug: string
               </div>
             )}
             <div className="ml-auto flex items-center">
-              <span className="text-2xl font-bold text-white">${program.basePrice}</span>
+              <span className="text-2xl font-bold text-white">{price}</span>
               <span className="text-white/50 text-sm ml-1.5">+ tax</span>
             </div>
           </div>
@@ -190,12 +204,32 @@ export default async function ProgramDetail({ params }: { params: { slug: string
                     {program.shortDescription}
                   </p>
                   {program.fullDescription && program.fullDescription !== program.shortDescription && (
-                    <p className="text-gray-600 leading-relaxed text-[17px] mt-4">
+                    <p className="text-gray-600 leading-relaxed text-[17px] mt-4 whitespace-pre-line">
                       {program.fullDescription}
                     </p>
                   )}
                 </div>
               </section>
+
+              {/* Gallery */}
+              {gallery.length > 0 && (
+                <section className="bg-white rounded-2xl p-8 shadow-sm">
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-6 tracking-tight">Inside the Program</h2>
+                  <div className="grid grid-cols-2 gap-3">
+                    {gallery.map((src, i) => (
+                      <div key={src} className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100">
+                        <Image
+                          src={src}
+                          alt={`${program.title} — photo ${i + 1}`}
+                          fill
+                          sizes="(min-width: 1024px) 380px, 50vw"
+                          className="object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               {/* What You'll Learn */}
               <section className="bg-white rounded-2xl p-8 shadow-sm">
@@ -213,6 +247,28 @@ export default async function ProgramDetail({ params }: { params: { slug: string
                   ))}
                 </ul>
               </section>
+
+              {/* Curriculum */}
+              {curriculum.length > 0 && (
+                <section className="bg-white rounded-2xl p-8 shadow-sm">
+                  <h2 className="text-2xl font-semibold text-gray-900 mb-6 tracking-tight">Curriculum</h2>
+                  <ol className="space-y-6">
+                    {curriculum.map((module, i) => (
+                      <li key={i} className="flex gap-4">
+                        <span className="flex-shrink-0 w-9 h-9 rounded-full bg-red-50 text-red-600 text-sm font-semibold flex items-center justify-center">
+                          {i + 1}
+                        </span>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{module.title}</h3>
+                          {module.description && (
+                            <p className="text-gray-600 text-[15px] leading-relaxed mt-1">{module.description}</p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              )}
 
               {/* Prerequisites */}
               {prerequisites.length > 0 && (
@@ -286,7 +342,7 @@ export default async function ProgramDetail({ params }: { params: { slug: string
 
                 <div className="p-6">
                   <div className="flex items-baseline gap-2 mb-1">
-                    <span className="text-3xl font-bold text-gray-900">${program.basePrice}</span>
+                    <span className="text-3xl font-bold text-gray-900">{price}</span>
                     <span className="text-sm text-gray-400">+ applicable tax</span>
                   </div>
 
@@ -301,11 +357,12 @@ export default async function ProgramDetail({ params }: { params: { slug: string
                     </div>
                   )}
 
-                  <EnrollButton programId={program.id} programPrice={program.basePrice} />
+                  <EnrollButton programId={program.id} programPrice={program.basePrice} currency={program.currency} eurPrice={program.eurPrice} />
 
                   {/* Includes list */}
                   <ul className="mt-6 space-y-3 border-t border-gray-100 pt-6">
                     {[
+                      ...includes,
                       program.totalHours ? `${program.totalHours} hours of content` : null,
                       program.accessDuration === 0 ? "Lifetime access" : program.accessDuration ? `${program.accessDuration}-day access` : "Full access",
                       program.certificateEnabled ? "Certificate of completion" : null,
