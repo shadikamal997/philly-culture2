@@ -3,15 +3,18 @@
 import { useEffect, useState } from "react";
 import { db } from "@/firebase/firebaseClient";
 import { collection, getDocs } from "firebase/firestore";
+import { formatCurrency } from "@/lib/formatCurrency";
 
 interface ProgramStats {
   id: string;
   title: string;
   programType: string;
   enrollments: number;
-  revenue: number;
+  revenue: number; // USD
+  eurRevenue: number;
   avgCompletion: number;
   basePrice: number;
+  currency?: string;
 }
 
 export default function AnalyticsPage() {
@@ -20,6 +23,8 @@ export default function AnalyticsPage() {
   const [revenueByType, setRevenueByType] = useState<Record<string, number>>({});
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalEnrollments, setTotalEnrollments] = useState(0);
+  const [totalEurRevenue, setTotalEurRevenue] = useState(0);
+  const [usdEnrollments, setUsdEnrollments] = useState(0);
 
   useEffect(() => {
     fetchAnalytics();
@@ -45,10 +50,14 @@ export default function AnalyticsPage() {
       const programStats: ProgramStats[] = [];
       const revenueByTypeMap: Record<string, number> = {};
       let totalRev = 0;
+      let totalEurRev = 0;
 
       programsData.forEach((program: any) => {
         const programEnrollments = enrollments.filter((e: any) => e.programId === program.id);
-        const revenue = programEnrollments.reduce((sum: number, e: any) => sum + (e.totalAmount || 0), 0);
+        // Revenue figures are USD; EUR (SEPA) sales are summed separately
+        const isUsd = (e: any) => (e.currency || "usd") === "usd";
+        const revenue = programEnrollments.filter(isUsd).reduce((sum: number, e: any) => sum + (e.totalAmount || 0), 0);
+        const eurRevenue = programEnrollments.filter((e: any) => !isUsd(e)).reduce((sum: number, e: any) => sum + (e.totalAmount || 0), 0);
         const avgCompletion = programEnrollments.length > 0
           ? programEnrollments.reduce((sum: number, e: any) => sum + (e.completionPercent || 0), 0) / programEnrollments.length
           : 0;
@@ -59,8 +68,10 @@ export default function AnalyticsPage() {
           programType: program.programType || "other",
           enrollments: programEnrollments.length,
           revenue,
+          eurRevenue,
           avgCompletion,
-          basePrice: program.basePrice || 0
+          basePrice: program.basePrice || 0,
+          currency: program.currency
         });
 
         const type = program.programType || "other";
@@ -69,6 +80,7 @@ export default function AnalyticsPage() {
         }
         revenueByTypeMap[type] += revenue;
         totalRev += revenue;
+        totalEurRev += eurRevenue;
       });
 
       programStats.sort((a, b) => b.revenue - a.revenue);
@@ -77,6 +89,8 @@ export default function AnalyticsPage() {
       setRevenueByType(revenueByTypeMap);
       setTotalRevenue(totalRev);
       setTotalEnrollments(enrollments.length);
+      setTotalEurRevenue(totalEurRev);
+      setUsdEnrollments(enrollments.filter((e: any) => (e.currency || "usd") === "usd").length);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching analytics:", error);
@@ -95,7 +109,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  const avgOrderValue = totalEnrollments > 0 ? totalRevenue / totalEnrollments : 0;
+  const avgOrderValue = usdEnrollments > 0 ? totalRevenue / usdEnrollments : 0;
   const overallCompletion = programs.reduce((sum, p) => sum + (p.avgCompletion * p.enrollments), 0) / 
                             (totalEnrollments || 1);
 
@@ -112,6 +126,9 @@ export default function AnalyticsPage() {
         <div className="bg-white border rounded-lg p-6">
           <h3 className="text-sm font-medium text-gray-600 mb-2">Total Revenue</h3>
           <p className="text-3xl font-bold text-green-600">${totalRevenue.toFixed(2)}</p>
+          {totalEurRevenue > 0 && (
+            <p className="text-sm font-semibold text-gray-600 mt-1">+ {formatCurrency(totalEurRevenue, "eur", 2)}</p>
+          )}
         </div>
         
         <div className="bg-white border rounded-lg p-6">
@@ -201,10 +218,13 @@ export default function AnalyticsPage() {
                           {program.programType}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">${program.basePrice.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-right">{formatCurrency(program.basePrice, program.currency, 2)}</td>
                       <td className="px-6 py-4 text-right font-semibold">{program.enrollments}</td>
                       <td className="px-6 py-4 text-right font-semibold text-green-600">
                         ${program.revenue.toFixed(2)}
+                        {program.eurRevenue > 0 && (
+                          <div className="text-xs text-gray-600">+ {formatCurrency(program.eurRevenue, "eur", 2)}</div>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <span className={`font-semibold ${

@@ -50,6 +50,22 @@ interface EnrollmentEmailData {
   enrollmentDate: Date;
 }
 
+interface SepaPaymentEmailData {
+  recipientEmail: string;
+  recipientName: string;
+  programTitle: string;
+  amount: string; // Already formatted, e.g. "€190.00"
+  actionUrl: string; // Orders page while processing, program page to retry after a failure
+}
+
+interface DisputeEmailData {
+  adminEmail: string;
+  customerEmail: string;
+  programTitle: string;
+  amount: string;
+  reason: string;
+}
+
 export class EmailService {
   private fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
   private adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
@@ -124,6 +140,60 @@ export class EmailService {
     } catch (error) {
       console.error('Error sending enrollment confirmation:', error);
       throw new Error('Failed to send enrollment confirmation');
+    }
+  }
+
+  async sendSepaPaymentProcessing(data: SepaPaymentEmailData): Promise<void> {
+    if (!resend) {
+      console.warn('Email service not configured - skipping SEPA processing email');
+      return;
+    }
+    try {
+      await resend.emails.send({
+        from: this.fromEmail,
+        to: data.recipientEmail,
+        subject: `We're processing your payment for ${data.programTitle}`,
+        html: this.generateSepaStatusHTML(data, 'processing'),
+      });
+    } catch (error) {
+      console.error('Error sending SEPA processing email:', error);
+      throw new Error('Failed to send SEPA processing email');
+    }
+  }
+
+  async sendSepaPaymentFailed(data: SepaPaymentEmailData): Promise<void> {
+    if (!resend) {
+      console.warn('Email service not configured - skipping SEPA failure email');
+      return;
+    }
+    try {
+      await resend.emails.send({
+        from: this.fromEmail,
+        to: data.recipientEmail,
+        subject: `Your payment for ${data.programTitle} didn't go through`,
+        html: this.generateSepaStatusHTML(data, 'failed'),
+      });
+    } catch (error) {
+      console.error('Error sending SEPA failure email:', error);
+      throw new Error('Failed to send SEPA failure email');
+    }
+  }
+
+  async sendDisputeNotification(data: DisputeEmailData): Promise<void> {
+    if (!resend) {
+      console.warn('Email service not configured - skipping dispute notification');
+      return;
+    }
+    try {
+      await resend.emails.send({
+        from: this.fromEmail,
+        to: data.adminEmail,
+        subject: `Payment disputed: ${data.programTitle} (${data.amount})`,
+        html: this.generateDisputeHTML(data),
+      });
+    } catch (error) {
+      console.error('Error sending dispute notification:', error);
+      throw new Error('Failed to send dispute notification');
     }
   }
 
@@ -316,6 +386,78 @@ export class EmailService {
 
         <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 0.9em; color: #666;">
           <p>Happy learning!</p>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private generateSepaStatusHTML(data: SepaPaymentEmailData, status: 'processing' | 'failed'): string {
+    const content = status === 'processing'
+      ? {
+          heading: 'Your payment is being processed',
+          body: `We've received your SEPA Direct Debit authorization for <strong>${data.programTitle}</strong>. Bank debits usually take 3–14 business days to clear. We'll email you as soon as your payment is confirmed, and your access will be activated automatically. There's nothing else you need to do.`,
+          button: 'View Payment Status',
+        }
+      : {
+          heading: "Your payment didn't go through",
+          body: `Your bank couldn't complete the SEPA Direct Debit for <strong>${data.programTitle}</strong>, so you haven't been charged and your enrollment wasn't activated. This usually happens when the account has insufficient funds or the bank details were incorrect. You can try again with another bank account or pay by card.`,
+          button: 'Try Again',
+        };
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #DC2626; color: white; padding: 20px; text-align: center;">
+          <h1 style="margin: 0;">Philly Culture Academy</h1>
+        </div>
+
+        <div style="padding: 20px; background-color: #f9f9f9;">
+          <h2>${content.heading}</h2>
+          <p>Hi ${data.recipientName},</p>
+          <p>${content.body}</p>
+
+          <div style="background-color: white; padding: 15px; margin: 20px 0; border-radius: 5px;">
+            <p style="margin: 0;"><strong>Program:</strong> ${data.programTitle}</p>
+            <p style="margin: 0;"><strong>Amount:</strong> ${data.amount}</p>
+            <p style="margin: 0;"><strong>Payment method:</strong> SEPA Direct Debit</p>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${data.actionUrl}" style="background-color: #DC2626; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              ${content.button}
+            </a>
+          </div>
+        </div>
+
+        <div style="background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 0.9em; color: #666;">
+          <p>Questions? Just reply to this email.</p>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private generateDisputeHTML(data: DisputeEmailData): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #DC2626;">A payment was disputed</h2>
+        <p>The student's access has been suspended until the dispute is resolved. Review it in the Stripe Dashboard under Payments → Disputes.</p>
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px;">
+          <p style="margin: 0;"><strong>Program:</strong> ${data.programTitle}</p>
+          <p style="margin: 0;"><strong>Customer:</strong> ${data.customerEmail}</p>
+          <p style="margin: 0;"><strong>Amount:</strong> ${data.amount}</p>
+          <p style="margin: 0;"><strong>Reason:</strong> ${data.reason}</p>
         </div>
       </body>
       </html>

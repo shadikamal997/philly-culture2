@@ -96,8 +96,15 @@ service cloud.firestore {
       
       // Only backend or admin can update
       allow update: if isAdmin();
-      
+
       allow delete: if false;
+    }
+
+    // SEPA Direct Debit payments awaiting settlement (written only by the Stripe webhook)
+    match /programPayments/{sessionId} {
+      allow read: if isAuthenticated()
+                  && (resource.data.userEmail == request.auth.token.email || isAdmin());
+      allow write: if false;
     }
 
     // =============================

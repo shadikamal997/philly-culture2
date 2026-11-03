@@ -4,11 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { db } from "@/firebase/firebaseClient";
 import { collection, getDocs } from "firebase/firestore";
+import { formatCurrency } from "@/lib/formatCurrency";
 
 interface OverviewMetrics {
-  totalRevenue: number;
-  revenueThisMonth: number;
-  totalTax: number;
+  totalRevenue: number; // USD
+  revenueThisMonth: number; // USD
+  eurRevenue: number;
+  eurRevenueThisMonth: number;
+  usdEnrollments: number;
+  totalTax: number; // US sales tax
   activeStudents: number;
   totalEnrollments: number;
   completionRate: number;
@@ -19,6 +23,9 @@ export default function AdminPage() {
   const [metrics, setMetrics] = useState<OverviewMetrics>({
     totalRevenue: 0,
     revenueThisMonth: 0,
+    eurRevenue: 0,
+    eurRevenueThisMonth: 0,
+    usdEnrollments: 0,
     totalTax: 0,
     activeStudents: 0,
     totalEnrollments: 0,
@@ -41,6 +48,9 @@ export default function AdminPage() {
       let totalRevenue = 0;
       let totalTax = 0;
       let revenueThisMonth = 0;
+      let eurRevenue = 0;
+      let eurRevenueThisMonth = 0;
+      let usdEnrollments = 0;
       const uniqueUsers = new Set();
       const statesTax: Record<string, { tax: number; count: number }> = {};
       
@@ -48,12 +58,22 @@ export default function AdminPage() {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
       enrollments.forEach((enrollment: any) => {
+        uniqueUsers.add(enrollment.userEmail);
+        const thisMonth = enrollment.enrolledAt && enrollment.enrolledAt.toDate() >= startOfMonth;
+
+        // EUR (SEPA) sales are totalled separately and have no US state tax
+        if ((enrollment.currency || "usd") !== "usd") {
+          eurRevenue += enrollment.totalAmount || 0;
+          if (thisMonth) eurRevenueThisMonth += enrollment.totalAmount || 0;
+          return;
+        }
+
+        usdEnrollments += 1;
         totalRevenue += enrollment.totalAmount || 0;
         totalTax += enrollment.taxAmount || 0;
-        uniqueUsers.add(enrollment.userEmail);
 
         // Revenue this month
-        if (enrollment.enrolledAt && enrollment.enrolledAt.toDate() >= startOfMonth) {
+        if (thisMonth) {
           revenueThisMonth += enrollment.totalAmount || 0;
         }
 
@@ -79,6 +99,9 @@ export default function AdminPage() {
       setMetrics({
         totalRevenue,
         revenueThisMonth,
+        eurRevenue,
+        eurRevenueThisMonth,
+        usdEnrollments,
         totalTax,
         activeStudents: uniqueUsers.size,
         totalEnrollments: enrollments.length,
@@ -132,6 +155,11 @@ export default function AdminPage() {
           <p className="text-3xl font-bold text-gray-900 dark:text-white">
             ${metrics.totalRevenue.toFixed(2)}
           </p>
+          {metrics.eurRevenue > 0 && (
+            <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mt-1">
+              + {formatCurrency(metrics.eurRevenue, "eur", 2)}
+            </p>
+          )}
         </div>
 
         {/* Monthly Revenue */}
@@ -148,6 +176,11 @@ export default function AdminPage() {
           <p className="text-3xl font-bold text-gray-900 dark:text-white">
             ${metrics.revenueThisMonth.toFixed(2)}
           </p>
+          {metrics.eurRevenueThisMonth > 0 && (
+            <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mt-1">
+              + {formatCurrency(metrics.eurRevenueThisMonth, "eur", 2)}
+            </p>
+          )}
         </div>
 
         {/* Tax Collected */}
@@ -215,7 +248,7 @@ export default function AdminPage() {
             <h3 className="font-semibold text-gray-900 dark:text-white">Avg Order Value</h3>
           </div>
           <p className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            ${metrics.totalEnrollments > 0 ? (metrics.totalRevenue / metrics.totalEnrollments).toFixed(2) : '0.00'}
+            ${metrics.usdEnrollments > 0 ? (metrics.totalRevenue / metrics.usdEnrollments).toFixed(2) : '0.00'}
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">Per enrollment</p>
         </div>

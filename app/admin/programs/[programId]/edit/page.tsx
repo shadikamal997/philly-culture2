@@ -21,6 +21,8 @@ export default function EditProgram() {
   const [shortDescription, setShortDescription] = useState("");
   const [fullDescription, setFullDescription] = useState("");
   const [price, setPrice] = useState("");
+  const [currency, setCurrency] = useState<"usd" | "eur">("usd");
+  const [eurPrice, setEurPrice] = useState("");
   const [programType, setProgramType] = useState<"intensive" | "weekly" | "professional">("intensive");
   const [totalHours, setTotalHours] = useState("");
   const [instructorName, setInstructorName] = useState("");
@@ -91,6 +93,8 @@ export default function EditProgram() {
         setShortDescription(program.shortDescription || "");
         setFullDescription(program.fullDescription || "");
         setPrice(program.basePrice?.toString() || "0");
+        setCurrency(program.currency === "eur" ? "eur" : "usd");
+        setEurPrice(program.eurPrice ? program.eurPrice.toString() : "");
         setProgramType(program.programType || "intensive");
         setTotalHours(program.totalHours?.toString() || "1");
         setInstructorName(program.instructorName || "");
@@ -212,6 +216,10 @@ export default function EditProgram() {
       if (!price || Number(price) < 0) {
         errors.push('Please enter a valid price (0 or higher)');
       }
+
+      if (currency === "usd" && eurPrice && !(Number(eurPrice) > 0)) {
+        errors.push('EUR price must be greater than 0 (or left empty)');
+      }
       
       if (!totalHours || Number(totalHours) < 1) {
         errors.push('Total hours must be at least 1');
@@ -266,6 +274,8 @@ export default function EditProgram() {
         language,
         totalHours: Number(totalHours) || 2,
         basePrice: Number(price),
+        currency,
+        eurPrice: currency === "usd" && eurPrice ? Number(eurPrice) : null,
         published,
         featured,
         certificateEnabled,
@@ -619,18 +629,48 @@ export default function EditProgram() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Base Price (USD) *</label>
-              <input
-                type="number"
-                placeholder="99.00"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-600"
-                required
-                step="0.01"
-                min="0"
-              />
+              <label className="block text-sm font-medium mb-2">Base Price *</label>
+              <div className="flex gap-2">
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value as "usd" | "eur")}
+                  aria-label="Currency"
+                  className="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-600"
+                >
+                  <option value="usd">USD $</option>
+                  <option value="eur">EUR €</option>
+                </select>
+                <input
+                  type="number"
+                  placeholder="99.00"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="flex-1 min-w-0 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-600"
+                  required
+                  step="0.01"
+                  min="0"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {currency === "eur" ? "Paid by card or SEPA Direct Debit." : "Paid by card."}
+              </p>
             </div>
+
+            {currency === "usd" && (
+              <div>
+                <label className="block text-sm font-medium mb-2">EUR Price (optional)</label>
+                <input
+                  type="number"
+                  placeholder="Leave empty for USD only"
+                  value={eurPrice}
+                  onChange={(e) => setEurPrice(e.target.value)}
+                  className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-600"
+                  step="0.01"
+                  min="0"
+                />
+                <p className="text-xs text-gray-500 mt-1">Adds a &quot;Pay in EUR&quot; option with card or SEPA Direct Debit.</p>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium mb-2">Program Type *</label>

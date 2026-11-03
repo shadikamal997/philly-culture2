@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { db } from "@/firebase/firebaseClient";
 import { collection, getDocs, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { formatCurrency } from "@/lib/formatCurrency";
 
 interface Order {
   id: string;
@@ -13,6 +14,7 @@ interface Order {
   subtotal: number;
   taxAmount: number;
   totalAmount: number;
+  currency?: string;
   state: string;
   country: string;
   city: string;
@@ -20,7 +22,31 @@ interface Order {
   stripePaymentIntentId: string;
   status: string;
   refundStatus?: string;
+  disputeStatus?: string;
   enrolledAt: any;
+}
+
+// SEPA Direct Debit checkouts that haven't settled (see programPayments)
+interface PendingPayment {
+  id: string;
+  userEmail: string;
+  customerName?: string;
+  programTitle?: string;
+  totalAmount: number;
+  currency: string;
+  status: "processing" | "succeeded" | "failed";
+  createdAt: any;
+}
+
+// Sum amounts per currency, e.g. "$1,200.00 + €10,000.00"
+function totalsByCurrency<T extends { currency?: string }>(items: T[], amount: (item: T) => number): string {
+  const totals: Record<string, number> = {};
+  items.forEach((item) => {
+    const currency = item.currency || "usd";
+    totals[currency] = (totals[currency] || 0) + (amount(item) || 0);
+  });
+  const parts = Object.entries(totals).map(([currency, total]) => formatCurrency(total, currency, 2));
+  return parts.length ? parts.join(" + ") : formatCurrency(0, "usd", 2);
 }
 
 export default function OrdersPage() {
@@ -28,6 +54,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [refunding, setRefunding] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
 
   useEffect(() => {
     fetchOrders();
@@ -49,6 +76,14 @@ export default function OrdersPage() {
       });
 
       setOrders(ordersData);
+
+      const paymentsSnap = await getDocs(collection(db, "programPayments"));
+      setPendingPayments(
+        paymentsSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }) as PendingPayment)
+          .filter(p => p.status !== "succeeded") // Settled payments already appear as orders
+          .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))
+      );
       setLoading(false);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -57,7 +92,7 @@ export default function OrdersPage() {
   };
 
   const handleRefund = async (order: Order) => {
-    if (!confirm(`Are you sure you want to refund $${order.totalAmount.toFixed(2)} to ${order.userEmail}?`)) {
+    if (!confirm(`Are you sure you want to refund ${formatCurrency(order.totalAmount, order.currency, 2)} to ${order.userEmail}?`)) {
       return;
     }
 
@@ -128,13 +163,13 @@ export default function OrdersPage() {
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-600 mb-1">Total Revenue</p>
           <p className="text-2xl font-bold">
-            ${orders.reduce((sum, o) => sum + o.totalAmount, 0).toFixed(2)}
+            {totalsByCurrency(orders, o => o.totalAmount)}
           </p>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-600 mb-1">Total Tax</p>
           <p className="text-2xl font-bold">
-            ${orders.reduce((sum, o) => sum + o.taxAmount, 0).toFixed(2)}
+            {totalsByCurrency(orders, o => o.taxAmount)}
           </p>
         </div>
         <div className="bg-white border rounded-lg p-4">
@@ -150,6 +185,51 @@ export default function OrdersPage() {
           </p>
         </div>
       </div>
+
+      {/* Pending SEPA Direct Debit payments */}
+      {pendingPayments.length > 0 && (
+        <div className="bg-white border rounded-lg overflow-hidden mb-8">
+          <div className="px-4 py-3 border-b bg-amber-50">
+            <h2 className="font-semibold">SEPA Direct Debit payments</h2>
+            <p className="text-sm text-gray-600">
+              Bank debits take 3–14 business days to clear. Students are enrolled automatically once a payment succeeds.
+            </p>
+          </div>
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Student</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Program</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Total</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {pendingPayments.map((payment) => (
+                <tr key={payment.id}>
+                  <td className="px-4 py-4 text-sm">{payment.createdAt?.toDate?.().toLocaleDateString()}</td>
+                  <td className="px-4 py-4">
+                    <div className="text-sm font-medium">{payment.customerName || "N/A"}</div>
+                    <div className="text-xs text-gray-500">{payment.userEmail}</div>
+                  </td>
+                  <td className="px-4 py-4 text-sm">{payment.programTitle}</td>
+                  <td className="px-4 py-4 text-sm font-semibold text-right">
+                    {formatCurrency(payment.totalAmount, payment.currency, 2)}
+                  </td>
+                  <td className="px-4 py-4 text-center">
+                    <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+                      payment.status === "failed" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"
+                    }`}>
+                      {payment.status === "failed" ? "FAILED" : "PROCESSING"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Orders Table */}
       <div className="bg-white border rounded-lg overflow-hidden">
@@ -190,18 +270,20 @@ export default function OrdersPage() {
                       <div className="text-sm">{order.city}, {order.state}</div>
                       <div className="text-xs text-gray-500">{order.country}</div>
                     </td>
-                    <td className="px-4 py-4 text-sm text-right">${order.subtotal.toFixed(2)}</td>
-                    <td className="px-4 py-4 text-sm text-right">${order.taxAmount.toFixed(2)}</td>
-                    <td className="px-4 py-4 text-sm font-semibold text-right">${order.totalAmount.toFixed(2)}</td>
+                    <td className="px-4 py-4 text-sm text-right">{formatCurrency(order.subtotal, order.currency, 2)}</td>
+                    <td className="px-4 py-4 text-sm text-right">{formatCurrency(order.taxAmount, order.currency, 2)}</td>
+                    <td className="px-4 py-4 text-sm font-semibold text-right">{formatCurrency(order.totalAmount, order.currency, 2)}</td>
                     <td className="px-4 py-4 text-center">
                       <span className={`inline-block px-2 py-1 text-xs font-semibold rounded-full ${
                         order.refundStatus === "refunded" 
                           ? "bg-red-100 text-red-800"
+                          : order.status === "suspended"
+                          ? "bg-amber-100 text-amber-800"
                           : order.status === "active"
                           ? "bg-green-100 text-green-800"
                           : "bg-gray-100 text-gray-800"
                       }`}>
-                        {order.refundStatus === "refunded" ? "REFUNDED" : order.status.toUpperCase()}
+                        {order.refundStatus === "refunded" ? "REFUNDED" : order.disputeStatus && order.status === "suspended" ? "DISPUTED" : order.status.toUpperCase()}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-center">
@@ -288,15 +370,15 @@ export default function OrdersPage() {
                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Subtotal:</span>
-                    <span className="font-medium">${selectedOrder.subtotal.toFixed(2)}</span>
+                    <span className="font-medium">{formatCurrency(selectedOrder.subtotal, selectedOrder.currency, 2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Tax ({selectedOrder.state}):</span>
-                    <span className="font-medium">${selectedOrder.taxAmount.toFixed(2)}</span>
+                    <span className="font-medium">{formatCurrency(selectedOrder.taxAmount, selectedOrder.currency, 2)}</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t">
                     <span className="font-semibold">Total Paid:</span>
-                    <span className="font-bold text-lg">${selectedOrder.totalAmount.toFixed(2)}</span>
+                    <span className="font-bold text-lg">{formatCurrency(selectedOrder.totalAmount, selectedOrder.currency, 2)}</span>
                   </div>
                 </div>
               </div>
@@ -323,11 +405,13 @@ export default function OrdersPage() {
                   <span className={`px-3 py-1 text-sm font-semibold rounded-full ${
                     selectedOrder.refundStatus === "refunded" 
                       ? "bg-red-100 text-red-800"
+                      : selectedOrder.status === "suspended"
+                      ? "bg-amber-100 text-amber-800"
                       : selectedOrder.status === "active"
                       ? "bg-green-100 text-green-800"
                       : "bg-gray-100 text-gray-800"
                   }`}>
-                    {selectedOrder.refundStatus === "refunded" ? "REFUNDED" : selectedOrder.status.toUpperCase()}
+                    {selectedOrder.refundStatus === "refunded" ? "REFUNDED" : selectedOrder.disputeStatus && selectedOrder.status === "suspended" ? "DISPUTED" : selectedOrder.status.toUpperCase()}
                   </span>
                 </div>
               </div>

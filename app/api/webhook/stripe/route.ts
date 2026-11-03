@@ -4,6 +4,167 @@ import { adminDb as db } from '@/firebase/firebaseAdmin';
 import { FieldValue } from 'firebase-admin/firestore';
 import Stripe from 'stripe';
 import { emailService } from '@/services/emailService';
+import { formatCurrency } from '@/lib/formatCurrency';
+
+const siteUrl = () => process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
+const customerEmail = (session: Stripe.Checkout.Session) =>
+  session.metadata?.userEmail || session.customer_details?.email || null;
+
+/**
+ * Create the program enrollment for a paid Checkout Session.
+ * Idempotent per session; returns the enrollment ID.
+ */
+async function enrollFromSession(session: Stripe.Checkout.Session): Promise<string | null> {
+  const metadata = session.metadata || {};
+  const programId = metadata.programId;
+  const userEmail = customerEmail(session);
+
+  if (!programId || !userEmail) return null;
+
+  const existingEnrollment = await db
+    .collection('enrollments')
+    .where('stripeSessionId', '==', session.id)
+    .limit(1)
+    .get();
+
+  if (!existingEnrollment.empty) return existingEnrollment.docs[0].id;
+
+  const programSnap = await db.collection('programs').doc(programId).get();
+  const programData = programSnap.exists ? programSnap.data() : null;
+
+  let accessExpiresAt: Date | null = null;
+  const accessDuration = Number(programData?.accessDuration || 0);
+  if (accessDuration > 0) {
+    accessExpiresAt = new Date(Date.now() + accessDuration * 24 * 60 * 60 * 1000);
+  }
+
+  // Create enrollment
+  const enrollmentRef = await db.collection('enrollments').add({
+    userId: userEmail,
+    userEmail,
+    customerName: session.customer_details?.name || null,
+    programId,
+    programSlug: metadata.programSlug || null,
+    programTitle: metadata.programTitle || programData?.title || null,
+    subtotal: (session.amount_subtotal || 0) / 100,
+    taxAmount: (session.total_details?.amount_tax || 0) / 100,
+    totalAmount: (session.amount_total || 0) / 100,
+    currency: session.currency || 'usd',
+    state: session.customer_details?.address?.state || null,
+    city: session.customer_details?.address?.city || null,
+    country: session.customer_details?.address?.country || 'US',
+    postalCode: session.customer_details?.address?.postal_code || null,
+    stripeSessionId: session.id,
+    stripePaymentIntentId:
+      typeof session.payment_intent === 'string' ? session.payment_intent : null,
+    stripeCustomerId: typeof session.customer === 'string' ? session.customer : null,
+    status: 'active',
+    enrolledAt: new Date(),
+    accessExpiresAt,
+    unlockType: programData?.unlockType || 'instant',
+    startDate: programData?.isCohort ? programData?.startDate || null : null,
+    completionPercent: 0,
+    certificateIssued: false,
+    certificateEligible: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  // Create chat for student-admin communication
+  try {
+    // Get student's UID from users collection
+    const studentQuery = await db.collection('users').where('email', '==', userEmail).limit(1).get();
+    const studentId = !studentQuery.empty ? studentQuery.docs[0].id : userEmail; // Fallback to email if user not found
+
+    // Get or find owner/admin user ID
+    const ownerEmail = process.env.NEXT_PUBLIC_OWNER_EMAIL || 'owner@phillycultrue.com';
+    const ownerQuery = await db.collection('users').where('email', '==', ownerEmail).limit(1).get();
+    const ownerId = !ownerQuery.empty ? ownerQuery.docs[0].id : null;
+
+    // Only create chat if we have both student and owner
+    if (ownerId) {
+      await db.collection('chats').add({
+        programId,
+        programTitle: metadata.programTitle || programData?.title || 'Program',
+        studentId,
+        studentName: session.customer_details?.name || 'Student',
+        studentEmail: userEmail,
+        ownerId,
+        participants: [studentId, ownerId], // Store UIDs for proper security rules
+        lastMessage: null,
+        lastMessageTimestamp: null,
+        unreadCountStudent: 0,
+        unreadCountOwner: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      console.log('✅ Chat created for enrollment:', { programId, userEmail, studentId, ownerId });
+    } else {
+      console.warn('⚠️ Owner not found, chat not created');
+    }
+  } catch (chatError) {
+    console.error('❌ Failed to create chat:', chatError);
+    // Don't fail enrollment if chat creation fails
+  }
+
+  return enrollmentRef.id;
+}
+
+/**
+ * Track a SEPA Direct Debit checkout in programPayments (doc ID = session ID).
+ * Returns false when the update was skipped because the payment already settled.
+ */
+async function recordProgramPayment(
+  session: Stripe.Checkout.Session,
+  status: 'processing' | 'succeeded' | 'failed',
+  enrollmentId?: string | null
+): Promise<boolean> {
+  const ref = db.collection('programPayments').doc(session.id);
+  const metadata = session.metadata || {};
+
+  return db.runTransaction(async (transaction) => {
+    const snap = await transaction.get(ref);
+
+    // Stripe doesn't guarantee event order: never move a settled payment back to processing
+    if (status === 'processing' && snap.exists && snap.data()?.status !== 'processing') {
+      return false;
+    }
+
+    transaction.set(ref, {
+      stripeSessionId: session.id,
+      stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+      programId: metadata.programId,
+      programSlug: metadata.programSlug || null,
+      programTitle: metadata.programTitle || null,
+      userEmail: customerEmail(session),
+      customerName: session.customer_details?.name || null,
+      subtotal: (session.amount_subtotal || 0) / 100,
+      taxAmount: (session.total_details?.amount_tax || 0) / 100,
+      totalAmount: (session.amount_total || 0) / 100,
+      currency: session.currency || 'eur',
+      // Only delayed-notification methods complete unpaid, and SEPA is the only one we offer
+      paymentMethod: 'sepa_debit',
+      status,
+      ...(enrollmentId ? { enrollmentId } : {}),
+      ...(snap.exists ? {} : { createdAt: new Date() }),
+      updatedAt: new Date(),
+    }, { merge: true });
+
+    return true;
+  });
+}
+
+function sepaEmailData(session: Stripe.Checkout.Session, actionUrl: string) {
+  return {
+    recipientEmail: customerEmail(session)!,
+    recipientName: session.customer_details?.name || 'there',
+    programTitle: session.metadata?.programTitle || 'your program',
+    amount: formatCurrency((session.amount_total || 0) / 100, session.currency || 'eur', 2),
+    actionUrl,
+  };
+}
 
 export async function POST(req: Request) {
   try {
@@ -39,99 +200,103 @@ export async function POST(req: Request) {
       processed: false,
     });
 
-    // Handle program checkout completion (program enrollments)
+    // Handle program checkout completion (program enrollments).
+    // Card payments are paid at this point. SEPA Direct Debit sessions complete as
+    // 'unpaid' and settle days later via the async_payment events below.
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
-      const metadata = session.metadata || {};
 
-      const programId = metadata.programId;
-      const userEmail = metadata.userEmail || session.customer_details?.email;
+      if (session.metadata?.programId && customerEmail(session)) {
+        if (session.payment_status === 'unpaid') {
+          const recorded = await recordProgramPayment(session, 'processing');
+          if (recorded) {
+            try {
+              await emailService.sendSepaPaymentProcessing(sepaEmailData(session, `${siteUrl()}/orders`));
+            } catch (emailError) {
+              console.error('❌ Failed to send SEPA processing email:', emailError);
+            }
+          }
+        } else {
+          await enrollFromSession(session);
+        }
+      }
+    }
 
-      if (programId && userEmail) {
-        const existingEnrollment = await db
+    // SEPA Direct Debit settled: enroll the student
+    if (event.type === 'checkout.session.async_payment_succeeded') {
+      const session = event.data.object as Stripe.Checkout.Session;
+
+      if (session.metadata?.programId && customerEmail(session)) {
+        const enrollmentId = await enrollFromSession(session);
+        await recordProgramPayment(session, 'succeeded', enrollmentId);
+
+        try {
+          await emailService.sendEnrollmentConfirmation({
+            recipientEmail: customerEmail(session)!,
+            recipientName: session.customer_details?.name || 'Student',
+            courseName: session.metadata.programTitle || 'your program',
+            courseUrl: `${siteUrl()}/my-courses`,
+            enrollmentDate: new Date(),
+          });
+        } catch (emailError) {
+          console.error('❌ Failed to send enrollment email:', emailError);
+        }
+      }
+    }
+
+    // SEPA Direct Debit failed (e.g. insufficient funds): no enrollment is created
+    if (event.type === 'checkout.session.async_payment_failed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+
+      if (session.metadata?.programId && customerEmail(session)) {
+        await recordProgramPayment(session, 'failed');
+
+        try {
+          const retryUrl = `${siteUrl()}/programs/${session.metadata.programSlug || ''}`;
+          await emailService.sendSepaPaymentFailed(sepaEmailData(session, retryUrl));
+        } catch (emailError) {
+          console.error('❌ Failed to send SEPA failure email:', emailError);
+        }
+      }
+    }
+
+    // Disputes suspend program access; a won dispute (or closed inquiry) restores it
+    if (event.type === 'charge.dispute.created' || event.type === 'charge.dispute.closed') {
+      const dispute = event.data.object as Stripe.Dispute;
+      const paymentIntentId =
+        typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id;
+
+      if (paymentIntentId) {
+        const enrollmentsSnap = await db
           .collection('enrollments')
-          .where('stripeSessionId', '==', session.id)
-          .limit(1)
+          .where('stripePaymentIntentId', '==', paymentIntentId)
           .get();
 
-        if (existingEnrollment.empty) {
-          const programSnap = await db.collection('programs').doc(programId).get();
-          const programData = programSnap.exists ? programSnap.data() : null;
+        const restore =
+          event.type === 'charge.dispute.closed' &&
+          (dispute.status === 'won' || dispute.status === 'warning_closed');
 
-          let accessExpiresAt: Date | null = null;
-          const accessDuration = Number(programData?.accessDuration || 0);
-          if (accessDuration > 0) {
-            accessExpiresAt = new Date(Date.now() + accessDuration * 24 * 60 * 60 * 1000);
-          }
-
-          // Create enrollment
-          await db.collection('enrollments').add({
-            userId: userEmail,
-            userEmail,
-            customerName: session.customer_details?.name || null,
-            programId,
-            programSlug: metadata.programSlug || null,
-            programTitle: metadata.programTitle || programData?.title || null,
-            subtotal: (session.amount_subtotal || 0) / 100,
-            taxAmount: (session.total_details?.amount_tax || 0) / 100,
-            totalAmount: (session.amount_total || 0) / 100,
-            currency: session.currency || 'usd',
-            state: session.customer_details?.address?.state || null,
-            city: session.customer_details?.address?.city || null,
-            country: session.customer_details?.address?.country || 'US',
-            postalCode: session.customer_details?.address?.postal_code || null,
-            stripeSessionId: session.id,
-            stripePaymentIntentId:
-              typeof session.payment_intent === 'string' ? session.payment_intent : null,
-            stripeCustomerId: typeof session.customer === 'string' ? session.customer : null,
-            status: 'active',
-            enrolledAt: new Date(),
-            accessExpiresAt,
-            unlockType: programData?.unlockType || 'instant',
-            startDate: programData?.isCohort ? programData?.startDate || null : null,
-            completionPercent: 0,
-            certificateIssued: false,
-            certificateEligible: false,
-            createdAt: new Date(),
+        for (const enrollmentDoc of enrollmentsSnap.docs) {
+          if (enrollmentDoc.data().status === 'refunded') continue;
+          await enrollmentDoc.ref.update({
+            status: restore ? 'active' : 'suspended',
+            disputeStatus: dispute.status,
             updatedAt: new Date(),
           });
+        }
 
-          // Create chat for student-admin communication
+        if (event.type === 'charge.dispute.created' && !enrollmentsSnap.empty) {
+          const enrollment = enrollmentsSnap.docs[0].data();
           try {
-            // Get student's UID from users collection
-            const studentQuery = await db.collection('users').where('email', '==', userEmail).limit(1).get();
-            const studentId = !studentQuery.empty ? studentQuery.docs[0].id : userEmail; // Fallback to email if user not found
-            
-            // Get or find owner/admin user ID
-            const ownerEmail = process.env.NEXT_PUBLIC_OWNER_EMAIL || 'owner@phillycultrue.com';
-            const ownerQuery = await db.collection('users').where('email', '==', ownerEmail).limit(1).get();
-            const ownerId = !ownerQuery.empty ? ownerQuery.docs[0].id : null;
-
-            // Only create chat if we have both student and owner
-            if (ownerId) {
-              await db.collection('chats').add({
-                programId,
-                programTitle: metadata.programTitle || programData?.title || 'Program',
-                studentId,
-                studentName: session.customer_details?.name || 'Student',
-                studentEmail: userEmail,
-                ownerId,
-                participants: [studentId, ownerId], // Store UIDs for proper security rules
-                lastMessage: null,
-                lastMessageTimestamp: null,
-                unreadCountStudent: 0,
-                unreadCountOwner: 0,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              });
-
-              console.log('✅ Chat created for enrollment:', { programId, userEmail, studentId, ownerId });
-            } else {
-              console.warn('⚠️ Owner not found, chat not created');
-            }
-          } catch (chatError) {
-            console.error('❌ Failed to create chat:', chatError);
-            // Don't fail enrollment if chat creation fails
+            await emailService.sendDisputeNotification({
+              adminEmail: process.env.NEXT_PUBLIC_OWNER_EMAIL || 'owner@phillycultrue.com',
+              customerEmail: enrollment.userEmail,
+              programTitle: enrollment.programTitle || 'Program',
+              amount: formatCurrency(dispute.amount / 100, dispute.currency, 2),
+              reason: dispute.reason,
+            });
+          } catch (emailError) {
+            console.error('❌ Failed to send dispute notification:', emailError);
           }
         }
       }

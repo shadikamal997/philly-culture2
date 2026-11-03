@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/firebase/firebaseClient";
 import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import Link from "next/link";
+import { formatCurrency } from "@/lib/formatCurrency";
 import Image from "next/image";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -15,6 +16,8 @@ interface Program {
   instructorName: string;
   thumbnail: string;
   basePrice: number;
+  currency?: string;
+  eurPrice?: number | null;
   programType: string;
   category: string;
   difficultyLevel: string;
@@ -320,7 +323,8 @@ export default function ProgramsPage() {
                         <span>👨‍🍳</span> {program.instructorName}
                       </span>
                       <span className="flex items-center gap-1">
-                        <span>💰</span> ${program.basePrice}
+                        <span>💰</span> {formatCurrency(program.basePrice, program.currency)}
+                        {program.eurPrice ? ` · ${formatCurrency(program.eurPrice, "eur")}` : ""}
                       </span>
                       <span className="flex items-center gap-1">
                         <span>⏱️</span> {program.totalHours}h

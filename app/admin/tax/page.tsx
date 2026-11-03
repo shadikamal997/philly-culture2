@@ -40,6 +40,9 @@ export default function TaxDashboardPage() {
       let totalRevenueCollected = 0;
 
       enrollments.forEach((enrollment: any) => {
+        // US state sales tax report: EUR (SEPA) sales aren't US sales
+        if ((enrollment.currency || "usd") !== "usd") return;
+
         const state = enrollment.state || "Unknown";
         const subtotal = enrollment.subtotal || 0;
         const tax = enrollment.taxAmount || 0;

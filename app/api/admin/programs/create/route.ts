@@ -15,6 +15,8 @@ interface CreateProgramRequest {
   language: string;
   totalHours: number;
   basePrice: number;
+  currency?: 'usd' | 'eur';
+  eurPrice?: number | null;
   published: boolean;
   featured: boolean;
   certificateEnabled: boolean;
@@ -56,6 +58,14 @@ export async function POST(request: NextRequest) {
     
     if (body.basePrice < 0) {
       validationErrors.push('Price must be non-negative');
+    }
+
+    if (body.currency !== undefined && body.currency !== 'usd' && body.currency !== 'eur') {
+      validationErrors.push('Currency must be usd or eur');
+    }
+
+    if (body.eurPrice !== undefined && body.eurPrice !== null && !(body.eurPrice > 0)) {
+      validationErrors.push('EUR price must be greater than 0');
     }
     
     if (body.totalHours < 1) {
@@ -117,6 +127,8 @@ export async function POST(request: NextRequest) {
       // Pricing & Duration
       totalHours: body.totalHours,
       basePrice: body.basePrice,
+      currency: body.currency || 'usd',
+      eurPrice: body.eurPrice ?? null,
       
       // Settings
       published: body.published,

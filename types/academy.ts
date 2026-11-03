@@ -56,10 +56,12 @@ export interface Program {
   thumbnail: string;
   programType: 'intensive' | 'weekly' | 'professional';
   totalHours: number;
-  basePrice: number;
+  basePrice: number; // In `currency`
+  currency?: 'usd' | 'eur'; // Missing means USD. EUR checkouts also offer SEPA Direct Debit
+  eurPrice?: number | null; // Optional EUR price for USD programs
   published: boolean;
   featured?: boolean;
-  
+
   // Delivery method
   deliveryMethod: 'recorded' | 'live' | 'hybrid'; // recorded = video lessons, live = booking sessions, hybrid = both
   
@@ -85,6 +87,27 @@ export interface Program {
   
   createdAt: Timestamp;
   updatedAt?: Timestamp;
+}
+
+// A SEPA Direct Debit program checkout. SEPA settles days after checkout, so the
+// enrollment is only created once Stripe confirms the funds. Doc ID = session ID.
+export interface ProgramPayment {
+  stripeSessionId: string;
+  stripePaymentIntentId?: string | null;
+  programId: string;
+  programSlug?: string | null;
+  programTitle?: string | null;
+  userEmail: string;
+  customerName?: string | null;
+  subtotal: number;
+  taxAmount: number;
+  totalAmount: number;
+  currency: string;
+  paymentMethod: 'sepa_debit';
+  status: 'processing' | 'succeeded' | 'failed';
+  enrollmentId?: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export interface Enrollment {
@@ -116,7 +139,8 @@ export interface Enrollment {
   stripeSessionId: string;
   stripePaymentIntentId?: string;
   stripeCustomerId?: string;
-  
+  disputeStatus?: string; // Set while a payment dispute is open or after it closes
+
   // Status & Access Control
   status: 'active' | 'refunded' | 'expired' | 'suspended';
   enrolledAt: Timestamp;

@@ -15,6 +15,8 @@ interface UpdateProgramRequest {
   language?: string;
   totalHours?: number;
   basePrice?: number;
+  currency?: 'usd' | 'eur';
+  eurPrice?: number | null;
   published?: boolean;
   featured?: boolean;
   certificateEnabled?: boolean;
@@ -75,6 +77,14 @@ export async function PUT(
     if (body.basePrice !== undefined && body.basePrice < 0) {
       validationErrors.push('Price must be non-negative');
     }
+
+    if (body.currency !== undefined && body.currency !== 'usd' && body.currency !== 'eur') {
+      validationErrors.push('Currency must be usd or eur');
+    }
+
+    if (body.eurPrice !== undefined && body.eurPrice !== null && !(body.eurPrice > 0)) {
+      validationErrors.push('EUR price must be greater than 0');
+    }
     
     if (body.totalHours !== undefined && body.totalHours < 1) {
       validationErrors.push('Total hours must be at least 1');
@@ -109,6 +119,8 @@ export async function PUT(
     // Pricing & Duration
     if (body.totalHours !== undefined) updateData.totalHours = body.totalHours;
     if (body.basePrice !== undefined) updateData.basePrice = body.basePrice;
+    if (body.currency !== undefined) updateData.currency = body.currency;
+    if (body.eurPrice !== undefined) updateData.eurPrice = body.eurPrice;
     
     // Settings
     if (body.published !== undefined) updateData.published = body.published;

@@ -5,11 +5,13 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/firebase/firebaseClient';
+import { formatCurrency } from '@/lib/formatCurrency';
 
 interface Order {
   id: string;
   orderId: string;
   total: number;
+  currency?: string;
   status: string;
   createdAt: Date;
   programSlug?: string;
@@ -19,6 +21,11 @@ interface Order {
     type: string;
   }>;
 }
+
+const STATUS_LABELS: Record<string, string> = {
+  processing: 'Payment processing',
+  failed: 'Payment failed',
+};
 
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
@@ -55,9 +62,19 @@ export default function OrdersPage() {
           where('userId', '==', user.uid)
         );
 
-        const [enrollmentsSnapshot, legacyOrdersSnapshot] = await Promise.all([
+        // SEPA Direct Debit payments that haven't settled yet (no enrollment until they do)
+        const programPaymentsQuery = query(
+          collection(db, 'programPayments'),
+          where('userEmail', '==', user.email)
+        );
+
+        const [enrollmentsSnapshot, legacyOrdersSnapshot, programPaymentsSnapshot] = await Promise.all([
           getDocs(enrollmentsQuery),
           getDocs(legacyOrdersQuery),
+          getDocs(programPaymentsQuery).catch((error) => {
+            console.error('Failed to load pending payments:', error);
+            return null;
+          }),
         ]);
 
         const enrollmentOrders: Order[] = enrollmentsSnapshot.docs.map((doc) => {
@@ -69,6 +86,7 @@ export default function OrdersPage() {
             id: doc.id,
             orderId: data.stripeSessionId || doc.id,
             total: amount,
+            currency: data.currency,
             status: data.status || 'active',
             createdAt: toDate(data.enrolledAt || data.createdAt),
             programSlug: data.programSlug,
@@ -102,7 +120,21 @@ export default function OrdersPage() {
           };
         });
 
-        const mergedOrders = [...enrollmentOrders, ...legacyOrders].sort(
+        const pendingOrders: Order[] = (programPaymentsSnapshot?.docs || [])
+          .map((doc) => ({ id: doc.id, data: doc.data() as any }))
+          .filter(({ data }) => data.status !== 'succeeded') // Settled payments appear as enrollments
+          .map(({ id, data }) => ({
+            id,
+            orderId: id,
+            total: Number(data.totalAmount || 0),
+            currency: data.currency,
+            status: data.status,
+            createdAt: toDate(data.createdAt),
+            programSlug: data.programSlug,
+            items: [{ title: data.programTitle || 'Program Enrollment', price: Number(data.totalAmount || 0), type: 'program' }],
+          }));
+
+        const mergedOrders = [...pendingOrders, ...enrollmentOrders, ...legacyOrders].sort(
           (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
         );
 
@@ -158,17 +190,24 @@ export default function OrdersPage() {
 
                 <div className="text-left md:text-right">
                   <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                    ${order.total.toFixed(2)}
+                    {formatCurrency(order.total, order.currency, 2)}
                   </div>
                   <span
                     className={`inline-flex items-center mt-2 px-3 py-1 rounded-full text-xs font-medium ${
                       order.status === 'active' || order.status === 'paid'
                         ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                        : order.status === 'failed'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                         : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
                     }`}
                   >
-                    {order.status}
+                    {STATUS_LABELS[order.status] || order.status}
                   </span>
+                  {order.status === 'processing' && (
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 md:max-w-[220px] md:ml-auto">
+                      SEPA bank debits take 3–14 business days. Access activates automatically when it clears.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -179,7 +218,7 @@ export default function OrdersPage() {
                     className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-300"
                   >
                     <span>{item.title}</span>
-                    <span>${item.price.toFixed(2)}</span>
+                    <span>{formatCurrency(item.price, order.currency, 2)}</span>
                   </div>
                 ))}
               </div>

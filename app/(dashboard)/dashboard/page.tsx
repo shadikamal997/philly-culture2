@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const pathname = usePathname();
   const [orderCount, setOrderCount] = useState(0);
   const [programEnrollmentCount, setProgramEnrollmentCount] = useState(0);
+  const [processingPrograms, setProcessingPrograms] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchEnrollmentCount = async () => {
@@ -37,7 +38,31 @@ export default function DashboardPage() {
       }
     };
 
+    // SEPA Direct Debit payments still settling (the enrollment is created once they clear)
+    const fetchProcessingPayments = async () => {
+      if (!user?.email) {
+        setProcessingPrograms([]);
+        return;
+      }
+
+      try {
+        const paymentsSnapshot = await getDocs(
+          query(collection(db, 'programPayments'), where('userEmail', '==', user.email))
+        );
+        setProcessingPrograms(
+          paymentsSnapshot.docs
+            .map((doc) => doc.data() as any)
+            .filter((payment) => payment.status === 'processing')
+            .map((payment) => payment.programTitle || 'your program')
+        );
+      } catch (error) {
+        console.error('Failed to load pending payments:', error);
+        setProcessingPrograms([]);
+      }
+    };
+
     fetchEnrollmentCount();
+    fetchProcessingPayments();
   }, [user?.email]);
 
   const navigation = [
@@ -89,6 +114,19 @@ export default function DashboardPage() {
           Access all your learning tools and manage your account from here.
         </p>
       </div>
+
+      {processingPrograms.length > 0 && (
+        <div className="mb-8 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-5">
+          <p className="font-semibold text-amber-900 dark:text-amber-200">
+            Your bank payment for {processingPrograms.join(', ')} is processing
+          </p>
+          <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">
+            SEPA Direct Debit takes 3–14 business days to clear. We'll email you and activate your access automatically
+            once it's confirmed.{' '}
+            <Link href="/orders" className="underline font-medium">View status</Link>
+          </p>
+        </div>
+      )}
 
       {/* Navigation Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

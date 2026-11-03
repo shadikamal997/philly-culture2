@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   }
   
   try {
-    const { programId, userEmail } = await req.json();
+    const { programId, userEmail, currency: requestedCurrency } = await req.json();
 
     if (!programId) {
       return NextResponse.json({ error: "Program ID is required" }, { status: 400 });
@@ -47,6 +47,22 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         );
       }
+
+      // A SEPA payment that hasn't settled yet has no enrollment, so check it separately
+      const processingPayment = await adminDb
+        .collection("programPayments")
+        .where("programId", "==", programId)
+        .where("userEmail", "==", userEmail)
+        .where("status", "==", "processing")
+        .limit(1)
+        .get();
+
+      if (!processingPayment.empty) {
+        return NextResponse.json(
+          { error: "Your bank payment for this program is still processing. You'll get access as soon as it clears." },
+          { status: 400 }
+        );
+      }
     }
 
     // Fetch program from Firestore using Admin SDK
@@ -67,19 +83,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Program is not available" }, { status: 400 });
     }
 
+    // basePrice is in the program's currency (USD unless set to EUR). USD programs can
+    // also offer an eurPrice. Charging in EUR adds SEPA Direct Debit.
+    const programCurrency = program.currency === "eur" ? "eur" : "usd";
+    const currency = programCurrency === "eur" || requestedCurrency === "eur" ? "eur" : "usd";
+    if (currency !== programCurrency && !(program.eurPrice > 0)) {
+      return NextResponse.json({ error: "EUR payment is not available for this program" }, { status: 400 });
+    }
+    const unitPrice = currency === programCurrency ? program.basePrice : program.eurPrice;
+
     // Create Stripe Checkout Session
-    console.log('🔵 Creating Stripe checkout session...');
+    console.log('🔵 Creating Stripe checkout session...', { currency });
     const session = await stripe.checkout.sessions.create({
       ...CHECKOUT_SESSION_DEFAULTS,
-      payment_method_types: ["card"],
+      payment_method_types: currency === "eur" ? ["card", "sepa_debit"] : ["card"],
       mode: "payment",
       automatic_tax: { enabled: true },
       billing_address_collection: "required",
       line_items: [
         {
           price_data: {
-            currency: "usd",
-            unit_amount: Math.round(program.basePrice * 100), // Convert to cents
+            currency,
+            unit_amount: Math.round(unitPrice * 100), // Convert to cents
             product_data: {
               name: program.title,
               description: program.shortDescription || "Online culinary program",
@@ -90,7 +115,7 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/confirmation?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/programs/${program.slug}?canceled=true`,
       metadata: {
         programId,
